@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trade Calculator — Past Trades</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="history">
+    <h1>Past Trades</h1>
+    <p><a href="/">&larr; Start a new trade</a></p>
+
+    {% if not rooms %}
+    <p class="share-hint">No trades yet.</p>
+    {% else %}
+    <ul class="history-list">
+      {% for room in rooms %}
+      <li class="history-row">
+        <a href="/trade/{{ room.code }}" class="history-code">{{ room.code }}</a>
+        <span class="history-labels">{{ room.label_a }} vs {{ room.label_b }}</span>
+        <span class="history-totals">${{ "%.2f"|format(room.total_a) }} / ${{ "%.2f"|format(room.total_b) }}</span>
+        <span class="history-count">{{ room.item_count }} item{{ "" if room.item_count == 1 else "s" }}</span>
+        <span class="history-date">{{ room.updated_at }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </main>
+</body>
+</html>

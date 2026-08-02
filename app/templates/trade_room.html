@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trade Calculator — Room {{ room_code }}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-room-code="{{ room_code }}">
+  <main class="room">
+    <header class="room-header">
+      <h1>Trade <span class="room-code" id="room-code">{{ room_code }}</span></h1>
+      <p class="share-hint">Share this page's link — anyone with it can add or edit items live. <a href="/history">Past trades</a></p>
+    </header>
+
+    <section class="venue-panel">
+      <label>Trade venue:
+        <select id="venue-select">
+          <option value="direct">Direct trade</option>
+          <option value="in_person">In-person via store</option>
+          <option value="online">Online via store</option>
+        </select>
+      </label>
+      <label class="differential-input" id="in-person-differential-label">
+        In-person differential: <input type="number" id="in-person-differential" min="0" max="100" step="1" value="20" />%
+      </label>
+      <label class="differential-input" id="online-differential-label">
+        Online differential: <input type="number" id="online-differential" min="0" max="100" step="1" value="40" />%
+      </label>
+    </section>
+
+    <section class="commission-panel">
+      <label>Commission owed to:
+        <select id="commission-side-select">
+          <option value="">No commission</option>
+          <option value="A" id="commission-side-a-option">Side A</option>
+          <option value="B" id="commission-side-b-option">Side B</option>
+        </select>
+      </label>
+      <div id="commission-fields" hidden>
+        <label>Type:
+          <select id="commission-type-select">
+            <option value="percentage">Percentage of MSRP</option>
+            <option value="flat">Flat rate</option>
+          </select>
+        </label>
+        <label id="commission-rate-label">Rate: <input type="number" id="commission-rate" min="0" max="500" step="1" value="40" />%</label>
+        <label id="commission-base-label">MSRP of models painted: $<input type="number" id="commission-base" min="0" step="0.01" value="0" /></label>
+        <label id="commission-flat-label" hidden>Flat amount: $<input type="number" id="commission-flat" min="0" step="0.01" value="0" /></label>
+        <span id="commission-amount-display" class="commission-amount"></span>
+      </div>
+    </section>
+
+    <section class="totals" id="totals">
+      <div class="total-box" id="total-a"></div>
+      <div class="total-box" id="total-b"></div>
+      <div class="balance-box" id="balance"></div>
+    </section>
+
+    <section class="sides">
+      <div class="side" data-side="A">
+        <h2 class="side-label" id="label-a" contenteditable="true">Side A</h2>
+        <div class="item-list-header">
+          <span>Item</span>
+          <span>Qty</span>
+          <span>Kit</span>
+          <span>Cond.</span>
+          <span>Price ea.</span>
+          <span>Total</span>
+          <span></span>
+        </div>
+        <ul class="item-list" id="items-a"></ul>
+        {% include "add_item_form.html" with context %}
+        <div class="cash-row">
+          <label>Cash added: $<input type="number" step="0.01" min="0" id="cash-a" value="0" /></label>
+        </div>
+      </div>
+
+      <div class="side" data-side="B">
+        <h2 class="side-label" id="label-b" contenteditable="true">Side B</h2>
+        <div class="item-list-header">
+          <span>Item</span>
+          <span>Qty</span>
+          <span>Kit</span>
+          <span>Cond.</span>
+          <span>Price ea.</span>
+          <span>Total</span>
+          <span></span>
+        </div>
+        <ul class="item-list" id="items-b"></ul>
+        {% include "add_item_form.html" with context %}
+        <div class="cash-row">
+          <label>Cash added: $<input type="number" step="0.01" min="0" id="cash-b" value="0" /></label>
+        </div>
+      </div>
+    </section>
+
+    <p class="status" id="status">Connecting…</p>
+  </main>
+
+  <script src="/static/trade.js"></script>
+</body>
+</html>

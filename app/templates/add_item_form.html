@@ -1,0 +1,50 @@
+<form class="add-item-form">
+  <div class="catalog-search">
+    <input type="text" class="catalog-search-input" placeholder="Search any unit by name…" autocomplete="off" />
+    <ul class="catalog-search-results" hidden></ul>
+  </div>
+
+  <p class="selected-unit" hidden></p>
+
+  <details class="catalog-picker-details">
+    <summary>Or browse by game / faction</summary>
+    <div class="catalog-picker">
+      <select class="ip-select" required>
+        <option value="" disabled selected>Game…</option>
+      </select>
+      <select class="faction-select" required disabled>
+        <option value="" disabled selected>Faction…</option>
+      </select>
+      <select class="unit-select" required disabled>
+        <option value="" disabled selected>Unit…</option>
+      </select>
+    </div>
+  </details>
+
+  <div class="kit-info" hidden>
+    <span class="kit-info-label">Models in this kit:</span>
+    <input type="number" class="kit-models-input" min="1" placeholder="e.g. 5" />
+    <button type="button" class="kit-models-save">Save</button>
+    <span class="kit-info-hint"></span>
+  </div>
+
+  <div class="manual-fields" hidden>
+    <input type="text" class="manual-name" placeholder="Item name" autocomplete="off" />
+  </div>
+
+  <div class="qty-price-row">
+    <input type="number" class="item-qty-input" placeholder="Qty" value="1" min="1" required />
+    <select class="condition-select" title="Condition">
+      <option value="assembled" selected>Assembled</option>
+      <option value="needs_repair">Needs Repair (-20%)</option>
+      <option value="partial_paint">Partial Paint</option>
+      <option value="showcase">Showcase (+40%)</option>
+    </select>
+    <input type="number" class="item-price-input" placeholder="Price each" step="0.01" min="0" />
+    <button type="submit">Add</button>
+  </div>
+
+  <label class="manual-toggle">
+    <input type="checkbox" class="manual-toggle-checkbox" /> Can't find it? Enter manually
+  </label>
+</form>

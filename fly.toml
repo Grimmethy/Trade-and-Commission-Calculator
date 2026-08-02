@@ -1,0 +1,23 @@
+app = "trade-calculator"
+primary_region = "iad"
+
+[build]
+
+[env]
+  DATABASE_PATH = "/data/trade.db"
+
+[mounts]
+  source = "trade_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256

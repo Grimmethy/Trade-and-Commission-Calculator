@@ -1,0 +1,407 @@
+:root {
+  color-scheme: light dark;
+  --gap: 0.75rem;
+  --border: #8884;
+  --accent: #4a7fd6;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  margin: 0;
+  padding: var(--gap);
+  line-height: 1.4;
+}
+
+h1, h2 { margin: 0 0 0.5rem; }
+
+.home {
+  max-width: 32rem;
+  margin: 3rem auto;
+  text-align: center;
+}
+
+.home button {
+  font-size: 1.1rem;
+  padding: 0.75rem 1.5rem;
+  margin-top: 1rem;
+}
+
+.history-link {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.history {
+  max-width: 40rem;
+  margin: 2rem auto;
+}
+
+.history-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.history-code {
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.history-totals, .history-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.history-date {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+@media (min-width: 30rem) {
+  .history-row { grid-template-columns: 4.5rem 1fr auto auto auto; }
+  .history-date { grid-column: auto; }
+}
+
+.room-header .room-code {
+  font-family: monospace;
+  background: #8882;
+  padding: 0.1em 0.4em;
+  border-radius: 0.3em;
+}
+
+.share-hint {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  margin: var(--gap) 0;
+}
+
+.total-box, .balance-box {
+  flex: 1 1 10rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  font-weight: 600;
+}
+
+.balance-box {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.sides {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap);
+}
+
+@media (min-width: 42rem) {
+  .sides { grid-template-columns: 1fr 1fr; }
+}
+
+.side {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: var(--gap);
+}
+
+.side-label {
+  outline: none;
+  border-bottom: 1px dashed transparent;
+}
+.side-label:focus { border-bottom-color: var(--accent); }
+
+.item-list {
+  list-style: none;
+  margin: 0 0 var(--gap);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.item-row {
+  display: grid;
+  grid-template-columns: 1fr 3.5rem 3rem 6.5rem 4.5rem 4rem auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.item-list-header {
+  display: grid;
+  grid-template-columns: 1fr 3.5rem 3rem 6.5rem 4.5rem 4rem auto;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  opacity: 0.6;
+  padding: 0 0.1rem 0.2rem;
+}
+
+.item-list-header span:nth-child(5),
+.item-list-header span:nth-child(6) {
+  text-align: right;
+}
+
+.side:has(.item-list:empty) .item-list-header {
+  display: none;
+}
+
+.item-kit-size {
+  font-size: 0.8rem;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.item-kit-size.partial-kit {
+  opacity: 1;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-qty, .item-price {
+  width: 100%;
+  min-width: 0;
+}
+
+.item-line-total {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  color: #c0392b;
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.add-item-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: var(--gap);
+}
+
+.catalog-search {
+  position: relative;
+}
+
+.catalog-search-input {
+  width: 100%;
+}
+
+.catalog-search-results {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0.2rem 0 0;
+  padding: 0.2rem;
+  list-style: none;
+  background: Canvas;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.catalog-search-results li {
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+  border-radius: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.catalog-search-results li:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.selected-unit {
+  font-size: 0.85rem;
+  margin: 0;
+  padding: 0.3rem 0;
+  opacity: 0.85;
+}
+
+.catalog-picker-details summary {
+  font-size: 0.85rem;
+  cursor: pointer;
+  opacity: 0.75;
+  margin-bottom: 0.4rem;
+}
+
+.catalog-picker {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.4rem;
+}
+
+@media (min-width: 30rem) {
+  .catalog-picker { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+.kit-info {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.4rem;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.kit-info-hint {
+  opacity: 0.75;
+}
+
+.kit-models-input {
+  width: 4.5rem;
+  padding: 0.2rem;
+}
+
+.qty-price-row {
+  display: grid;
+  grid-template-columns: 3.5rem 8rem 4.5rem auto;
+  gap: 0.4rem;
+}
+
+.venue-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+}
+
+.venue-panel select {
+  padding: 0.3rem;
+}
+
+.differential-input {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  opacity: 0.6;
+}
+
+.differential-input.active-venue {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.differential-input input {
+  width: 3.5rem;
+  padding: 0.2rem;
+}
+
+.commission-panel {
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.commission-panel select {
+  padding: 0.3rem;
+}
+
+#commission-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.25rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+#commission-fields label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+#commission-fields input {
+  width: 5rem;
+  padding: 0.2rem;
+}
+
+.commission-amount {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.manual-toggle {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.add-item-form select, .add-item-form input, .add-item-form button,
+.item-qty, .item-price {
+  padding: 0.4rem;
+  font-size: 1rem;
+  min-width: 0;
+}
+
+.cash-row label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cash-row input {
+  width: 6rem;
+  padding: 0.3rem;
+}
+
+.status {
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+@media (max-width: 30rem) {
+  .item-row, .item-list-header {
+    grid-template-columns: 1fr 3rem 5.5rem 4rem 3.5rem auto;
+    font-size: 0.85rem;
+  }
+  .item-kit-size, .item-list-header span:nth-child(3) {
+    display: none;
+  }
+  .qty-price-row { grid-template-columns: 1fr; }
+}
