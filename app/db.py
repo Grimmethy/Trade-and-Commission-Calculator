@@ -100,9 +100,50 @@ CREATE TABLE IF NOT EXISTS kit_size_gaps (
     last_seen_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS inventory_items (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    sku                TEXT UNIQUE NOT NULL,
+    name               TEXT NOT NULL,
+    ip                 TEXT,
+    faction            TEXT,
+    source             TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('catalog','manual')),
+    catalog_item_id    INTEGER REFERENCES catalog_items(id),
+    box_price          REAL,
+    models_per_box     INTEGER,
+    qty                INTEGER NOT NULL DEFAULT 1 CHECK (qty >= 0),
+    condition          TEXT NOT NULL DEFAULT 'assembled'
+                         CHECK (condition IN ('needs_repair','assembled','partial_paint','showcase')),
+    third_party_price  REAL,
+    sp_min             REAL,
+    sp_max             REAL,
+    sell_price         REAL,
+    date_sold          TEXT,
+    status             TEXT NOT NULL DEFAULT 'in_stock'
+                         CHECK (status IN ('in_stock','listed','sold','archived')),
+    notes              TEXT,
+    created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at         TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS inventory_photos (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    inventory_item_id  INTEGER NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+    filename           TEXT NOT NULL,
+    original_filename  TEXT,
+    content_type       TEXT,
+    is_primary         INTEGER NOT NULL DEFAULT 0,
+    sort_order         INTEGER NOT NULL DEFAULT 0,
+    uploaded_at        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_items_room ON items(room_id);
 CREATE INDEX IF NOT EXISTS idx_catalog_items_name ON catalog_items(item_name);
 CREATE INDEX IF NOT EXISTS idx_catalog_items_ip_faction ON catalog_items(ip, faction);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_status ON inventory_items(status);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_catalog_item ON inventory_items(catalog_item_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_photos_item ON inventory_photos(inventory_item_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_photos_one_primary
+    ON inventory_photos(inventory_item_id) WHERE is_primary = 1;
 """
 
 _db: aiosqlite.Connection | None = None
@@ -247,6 +288,24 @@ def get_db() -> aiosqlite.Connection:
     if _db is None:
         raise RuntimeError("Database not initialized — call init_db() first")
     return _db
+
+
+async def update_row(table: str, row_id: int, fields: dict, touch_updated_at: bool = False) -> None:
+    """The one place an UPDATE gets built. `fields` is exactly what gets
+    written — callers decide what belongs in it, including when None is a
+    real value to persist (e.g. clearing commission_side), not a "leave
+    unchanged" sentinel. Skipping a key entirely is how a caller says "don't
+    touch this column"."""
+    if not fields and not touch_updated_at:
+        return
+    set_clauses = [f"{column} = ?" for column in fields]
+    values = list(fields.values())
+    if touch_updated_at:
+        set_clauses.append("updated_at = datetime('now')")
+    values.append(row_id)
+    db = get_db()
+    await db.execute(f"UPDATE {table} SET {', '.join(set_clauses)} WHERE id = ?", values)
+    await db.commit()
 
 
 @asynccontextmanager

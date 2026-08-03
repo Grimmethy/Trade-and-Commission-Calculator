@@ -1,6 +1,7 @@
 from app.pricing import (
     apply_condition,
     compute_balance,
+    compute_sp_range,
     compute_totals,
     derive_per_model_price,
     rebaseline_condition,
@@ -102,3 +103,11 @@ def test_compute_totals_no_commission_side_means_no_commission():
     room = _room(commission_side=None, commission_type="percentage", commission_rate=0.40, commission_base=500)
     totals = compute_totals(room)
     assert totals.commission_amount == 0.0
+
+
+def test_compute_sp_range():
+    assert compute_sp_range(100.0) == (80.0, 150.0)
+
+
+def test_compute_sp_range_rounds_to_cents():
+    assert compute_sp_range(43.5) == (34.8, 65.25)

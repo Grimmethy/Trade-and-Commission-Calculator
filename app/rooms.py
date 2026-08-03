@@ -2,7 +2,7 @@ import re
 import secrets
 import string
 
-from app.db import get_db
+from app.db import get_db, update_row as _update_row
 from app.models import Item, Room
 
 ALPHABET = string.ascii_lowercase + string.digits
@@ -12,24 +12,6 @@ _SLUG_RE = re.compile(r"[^a-z0-9]+")
 def slugify(text: str) -> str:
     slug = _SLUG_RE.sub("-", text.strip().lower()).strip("-")
     return slug
-
-
-async def _update_row(table: str, row_id: int, fields: dict, touch_updated_at: bool = False) -> None:
-    """The one place an UPDATE gets built. `fields` is exactly what gets
-    written — callers decide what belongs in it, including when None is a
-    real value to persist (e.g. clearing commission_side), not a "leave
-    unchanged" sentinel. Skipping a key entirely is how a caller says "don't
-    touch this column"."""
-    if not fields and not touch_updated_at:
-        return
-    set_clauses = [f"{column} = ?" for column in fields]
-    values = list(fields.values())
-    if touch_updated_at:
-        set_clauses.append("updated_at = datetime('now')")
-    values.append(row_id)
-    db = get_db()
-    await db.execute(f"UPDATE {table} SET {', '.join(set_clauses)} WHERE id = ?", values)
-    await db.commit()
 
 
 async def create_room() -> Room:

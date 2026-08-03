@@ -7,6 +7,12 @@ trade.db-journal
 trade.db.backup-*
 .env
 *.log
+/photos/
+/exports/
+/labels/
+data/square_template.csv
+data/ebay_template.csv
+data/ebay_category_map.json
 instances/
 queue/
 task-domains.json

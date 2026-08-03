@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ item.sku }} — Inventory</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-item-id="{{ item.id }}" data-sku="{{ item.sku }}">
+  <main class="inventory-detail-page">
+    <p><a href="/inventory">&larr; Inventory</a></p>
+    <h1>{{ item.sku }} <span class="inventory-status inventory-status-{{ item.status }}">{{ item.status }}</span></h1>
+
+    <section class="item-fields">
+      <label>Name <input type="text" id="field-name" value="{{ item.name }}" /></label>
+      <label>Qty <input type="number" id="field-qty" value="{{ item.qty }}" min="0" /></label>
+      <label>Condition
+        <select id="field-condition">
+          <option value="assembled" {{ "selected" if item.condition == "assembled" }}>Assembled</option>
+          <option value="needs_repair" {{ "selected" if item.condition == "needs_repair" }}>Needs Repair</option>
+          <option value="partial_paint" {{ "selected" if item.condition == "partial_paint" }}>Partial Paint</option>
+          <option value="showcase" {{ "selected" if item.condition == "showcase" }}>Showcase</option>
+        </select>
+      </label>
+      <label>Notes <textarea id="field-notes">{{ item.notes or "" }}</textarea></label>
+      <button id="save-fields">Save</button>
+    </section>
+
+    <section class="item-pricing">
+      <h2>Pricing</h2>
+      <label>3rd Party Price <input type="number" id="field-third-party-price" step="0.01" min="0"
+        value="{{ item.third_party_price if item.third_party_price is not none else '' }}" /></label>
+      <button id="save-pricing">Save</button>
+      <p class="sp-range">
+        SP range: <strong>${{ "%.2f"|format(item.sp_min) if item.sp_min else "—" }}</strong>
+        – <strong>${{ "%.2f"|format(item.sp_max) if item.sp_max else "—" }}</strong>
+      </p>
+      {% if item.status == "sold" %}
+      <p class="sold-info">Sold ${{ "%.2f"|format(item.sell_price) }} on {{ item.date_sold }}</p>
+      {% else %}
+      <div class="mark-sold-row">
+        <input type="number" id="field-sell-price" step="0.01" min="0" placeholder="Sell price" />
+        <button id="mark-sold">Mark Sold</button>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="item-photos">
+      <h2>Photos</h2>
+      <div class="photo-gallery">
+        {% for photo in item.photos %}
+        <div class="photo-thumb {{ 'is-primary' if photo.is_primary else '' }}" data-photo-id="{{ photo.id }}">
+          <img src="/photos/{{ item.sku }}/{{ photo.filename }}" alt="" />
+          <div class="photo-thumb-actions">
+            {% if not photo.is_primary %}
+            <button class="make-primary-btn" data-photo-id="{{ photo.id }}">Make primary</button>
+            {% else %}
+            <span class="primary-badge">Primary</span>
+            {% endif %}
+            <button class="delete-photo-btn" data-photo-id="{{ photo.id }}">Delete</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <form id="photo-upload-form">
+        <input type="file" id="photo-upload-input" accept="image/jpeg,image/png,image/webp" multiple />
+        <button type="submit">Upload</button>
+      </form>
+    </section>
+
+    <section class="item-actions">
+      <h2>Label</h2>
+      <button id="print-label">Print Label</button>
+      <button id="dry-run-label">Preview ZPL (dry run)</button>
+      <pre id="zpl-preview" hidden></pre>
+    </section>
+
+    <p class="danger-zone"><button id="delete-item">Delete item</button></p>
+  </main>
+  <script src="/static/inventory.js"></script>
+</body>
+</html>
