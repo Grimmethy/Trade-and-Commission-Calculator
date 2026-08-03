@@ -48,9 +48,24 @@ CREATE TABLE IF NOT EXISTS catalog_overlay (
     updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS commissions (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    code              TEXT UNIQUE NOT NULL,
+    painter_name      TEXT NOT NULL DEFAULT '',
+    status            TEXT NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted','returned','verified')),
+    commission_rate   REAL NOT NULL DEFAULT 0.40,
+    cash_amount       REAL NOT NULL DEFAULT 0,
+    created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Shared by trades (room_id set) and painting commissions (commission_id set) --
+-- side A/B means different things per owner: trade counterparty vs. submitted-for-
+-- painting/payment-goods. Exactly one owner column is set per row (see CHECK below).
 CREATE TABLE IF NOT EXISTS items (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    room_id           INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    room_id           INTEGER REFERENCES rooms(id) ON DELETE CASCADE,
+    commission_id     INTEGER REFERENCES commissions(id) ON DELETE CASCADE,
     side              TEXT NOT NULL CHECK (side IN ('A','B')),
     name              TEXT NOT NULL,
     qty               INTEGER NOT NULL DEFAULT 1,
@@ -62,7 +77,10 @@ CREATE TABLE IF NOT EXISTS items (
     condition         TEXT NOT NULL DEFAULT 'assembled'
                         CHECK (condition IN ('needs_repair','assembled','partial_paint','showcase')),
     sort_order        INTEGER NOT NULL DEFAULT 0,
-    created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+    verified          INTEGER NOT NULL DEFAULT 0,
+    verify_note       TEXT,
+    created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+    CHECK ((room_id IS NOT NULL) + (commission_id IS NOT NULL) = 1)
 );
 
 CREATE TABLE IF NOT EXISTS coverage_gaps (
@@ -98,6 +116,7 @@ async def init_db() -> None:
     await _db.executescript(SCHEMA)
     await _db.commit()
     await _migrate_existing_columns()
+    await _migrate_items_table_for_commissions()
     await _load_seed_if_empty()
 
 
@@ -121,6 +140,62 @@ async def _migrate_existing_columns() -> None:
         if column not in {row["name"] for row in existing}:
             await _db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
     await _db.commit()
+
+
+async def _migrate_items_table_for_commissions() -> None:
+    """SQLite can't ALTER a NOT NULL constraint away, so making room_id nullable
+    (to allow commission-only items with no room) needs the standard SQLite
+    rebuild-and-swap procedure, not a plain ALTER TABLE ADD COLUMN. Guarded by
+    checking room_id's notnull flag — a fresh DB already gets the final shape
+    from SCHEMA above, so this is a no-op there."""
+    info = await (await _db.execute("PRAGMA table_info(items)")).fetchall()
+    room_id_col = next(row for row in info if row["name"] == "room_id")
+    if room_id_col["notnull"] == 0:
+        return
+
+    await _db.execute("PRAGMA foreign_keys = OFF")
+    await _db.execute(
+        """
+        CREATE TABLE items_new (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_id           INTEGER REFERENCES rooms(id) ON DELETE CASCADE,
+            commission_id     INTEGER REFERENCES commissions(id) ON DELETE CASCADE,
+            side              TEXT NOT NULL CHECK (side IN ('A','B')),
+            name              TEXT NOT NULL,
+            qty               INTEGER NOT NULL DEFAULT 1,
+            unit_price        REAL NOT NULL,
+            source            TEXT NOT NULL CHECK (source IN ('catalog','manual')),
+            catalog_item_id   INTEGER REFERENCES catalog_items(id),
+            box_price         REAL,
+            models_per_box    INTEGER,
+            condition         TEXT NOT NULL DEFAULT 'assembled'
+                                CHECK (condition IN ('needs_repair','assembled','partial_paint','showcase')),
+            sort_order        INTEGER NOT NULL DEFAULT 0,
+            verified          INTEGER NOT NULL DEFAULT 0,
+            verify_note       TEXT,
+            created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+            CHECK ((room_id IS NOT NULL) + (commission_id IS NOT NULL) = 1)
+        )
+        """
+    )
+    await _db.execute(
+        """
+        INSERT INTO items_new
+            (id, room_id, commission_id, side, name, qty, unit_price, source,
+             catalog_item_id, box_price, models_per_box, condition, sort_order,
+             verified, verify_note, created_at)
+        SELECT id, room_id, NULL, side, name, qty, unit_price, source,
+               catalog_item_id, box_price, models_per_box, condition, sort_order,
+               0, NULL, created_at
+        FROM items
+        """
+    )
+    await _db.execute("DROP TABLE items")
+    await _db.execute("ALTER TABLE items_new RENAME TO items")
+    await _db.execute("CREATE INDEX IF NOT EXISTS idx_items_room ON items(room_id)")
+    await _db.execute("CREATE INDEX IF NOT EXISTS idx_items_commission ON items(commission_id)")
+    await _db.commit()
+    await _db.execute("PRAGMA foreign_keys = ON")
 
 
 async def _load_seed_if_empty() -> None:
