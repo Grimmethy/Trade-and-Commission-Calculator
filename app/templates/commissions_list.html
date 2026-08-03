@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trade Calculator — Painting Commissions</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="history commissions">
+    <h1>Painting Commissions</h1>
+    <p><a href="/">&larr; Home</a> &middot; <a href="/history">Past trades</a></p>
+
+    <form method="post" action="/commissions" class="new-commission-form">
+      <input type="text" name="painter_name" placeholder="Painter name" required />
+      <button type="submit">Start a new commission</button>
+    </form>
+
+    {% if not commissions %}
+    <p class="share-hint">No commissions yet.</p>
+    {% else %}
+    <ul class="history-list">
+      {% for c in commissions %}
+      <li class="history-row commission-row">
+        <a href="/commissions/{{ c.code }}" class="history-code">{{ c.code }}</a>
+        <span class="history-labels">{{ c.painter_name }}</span>
+        <span class="commission-status status-{{ c.status }}">{{ c.status }}</span>
+        <span class="history-count">{{ c.item_count }} item{{ "" if c.item_count == 1 else "s" }}</span>
+        <form class="history-delete" method="post" action="/commissions/{{ c.code }}/delete"
+              onsubmit="return confirm('Delete commission {{ c.code }}? This cannot be undone.');">
+          <button type="submit" class="delete-btn" title="Delete commission" aria-label="Delete commission">🗑</button>
+        </form>
+        <span class="history-date">{{ c.updated_at }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </main>
+</body>
+</html>

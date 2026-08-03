@@ -146,13 +146,13 @@ async def set_cash(room_id: int, side: str, amount: float) -> None:
     await _update_row("rooms", room_id, {column: amount}, touch_updated_at=True)
 
 
-async def _unique_code_for_slug(db, base_slug: str, room_id: int) -> str:
+async def _unique_code_for_slug(db, base_slug: str, row_id: int, table: str = "rooms") -> str:
     candidate = base_slug
     suffix = 2
     while True:
         row = await (
             await db.execute(
-                "SELECT id FROM rooms WHERE code = ? AND id != ?", (candidate, room_id)
+                f"SELECT id FROM {table} WHERE code = ? AND id != ?", (candidate, row_id)
             )
         ).fetchone()
         if row is None:
@@ -173,6 +173,18 @@ async def rename_side(room_id: int, side: str, label: str) -> None:
             fields["code"] = await _unique_code_for_slug(get_db(), base_slug, room_id)
 
     await _update_row("rooms", room_id, fields, touch_updated_at=True)
+
+
+async def rename_room_code(room_id: int, new_name: str) -> str | None:
+    """Directly renames a room's code/URL, independent of Side A/B labels.
+    Returns the actual new code (collision-suffixed if needed), or None if
+    the given name slugifies to nothing usable."""
+    base_slug = slugify(new_name)
+    if not base_slug:
+        return None
+    new_code = await _unique_code_for_slug(get_db(), base_slug, room_id)
+    await _update_row("rooms", room_id, {"code": new_code}, touch_updated_at=True)
+    return new_code
 
 
 async def set_venue(
@@ -265,6 +277,14 @@ async def remove_item(item_id: int) -> None:
     db = get_db()
     await db.execute("DELETE FROM items WHERE id = ?", (item_id,))
     await db.commit()
+
+
+async def remove_room(code: str) -> bool:
+    """Deletes a room and its items (cascade). Returns False if no such room."""
+    db = get_db()
+    cursor = await db.execute("DELETE FROM rooms WHERE code = ?", (code,))
+    await db.commit()
+    return cursor.rowcount > 0
 
 
 async def get_room_id_for_item(item_id: int) -> int | None:

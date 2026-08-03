@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trade Calculator — Commission {{ commission.code }}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-commission-code="{{ commission.code }}">
+  <main class="room commission-detail">
+    <header class="room-header">
+      <h1>Commission <span class="room-code commission-code" id="commission-code" contenteditable="true" title="Click to rename this commission">{{ commission.code }}</span>
+        <span class="commission-status status-{{ commission.status }}">{{ commission.status }}</span>
+      </h1>
+      <p class="share-hint">
+        <a href="/commissions">&larr; All commissions</a> &middot;
+        <a href="/commissions/{{ commission.code }}/print">Printer-friendly verification sheet</a>
+      </p>
+    </header>
+
+    <section class="totals" id="totals">
+      <div class="total-box">MSRP of submitted models: ${{ "%.2f"|format(totals.msrp_total) }}</div>
+      <div class="total-box">Owed ({{ (commission.commission_rate * 100)|round(0)|int }}%): ${{ "%.2f"|format(totals.owed_total) }}</div>
+      <div class="total-box">Paid so far: ${{ "%.2f"|format(totals.paid_so_far) }}</div>
+      <div class="balance-box">
+        {% if totals.remainder_owed > 0.005 %}
+          Remaining owed: ${{ "%.2f"|format(totals.remainder_owed) }}
+        {% elif totals.remainder_owed < -0.005 %}
+          Overpaid by ${{ "%.2f"|format(-totals.remainder_owed) }}
+        {% else %}
+          Paid in full
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="commission-settings">
+      <form method="post" action="/commissions/{{ commission.code }}/settings" class="settings-form">
+        <label>Painter: <input type="text" name="painter_name" value="{{ commission.painter_name }}" required /></label>
+        <label>Rate: <input type="number" name="commission_rate" value="{{ (commission.commission_rate * 100)|round(0)|int }}" min="0" step="1" />%</label>
+        <label>Cash paid: $<input type="number" name="cash_amount" value="{{ commission.cash_amount }}" min="0" step="0.01" /></label>
+        <button type="submit">Save settings</button>
+      </form>
+
+      <form method="post" action="/commissions/{{ commission.code }}/status" class="status-form">
+        <label>Status:
+          <select name="status">
+            <option value="submitted" {% if commission.status == 'submitted' %}selected{% endif %}>Submitted</option>
+            <option value="returned" {% if commission.status == 'returned' %}selected{% endif %}>Returned</option>
+            <option value="verified" {% if commission.status == 'verified' %}selected{% endif %}>Verified</option>
+          </select>
+        </label>
+        <button type="submit">Update status</button>
+      </form>
+    </section>
+
+    <section class="sides">
+      <div class="side" data-side="A">
+        <h2>Submitted for painting</h2>
+        <div class="item-list-header">
+          <span>Item</span>
+          <span>Qty</span>
+          <span>Price ea.</span>
+          <span>Total</span>
+          <span>Returned?</span>
+          <span>Note</span>
+          <span></span>
+        </div>
+        <ul class="item-list">
+          {% for item in commission.items if item.side == 'A' %}
+          <li class="item-row commission-item-row">
+            <span class="item-name">{{ item.name }}</span>
+            <span>{{ item.qty }}</span>
+            <span>${{ "%.2f"|format(item.unit_price) }}</span>
+            <span class="item-line-total">${{ "%.2f"|format(item.qty * item.unit_price) }}</span>
+            <form method="post" action="/commissions/{{ commission.code }}/items/{{ item.id }}/verify" class="verify-item-form">
+              <input type="checkbox" name="verified" value="true" {% if item.verified %}checked{% endif %} />
+              <input type="text" name="note" value="{{ item.verify_note or '' }}" placeholder="Note" class="verify-note-input" />
+              <button type="submit">Save</button>
+            </form>
+            <form method="post" action="/commissions/{{ commission.code }}/items/{{ item.id }}/delete" class="history-delete">
+              <button type="submit" class="delete-btn" title="Remove item">🗑</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+        <form method="post" action="/commissions/{{ commission.code }}/items" class="add-item-form commission-add-item-form" data-side="A">
+          <input type="hidden" name="side" value="A" />
+          <div class="catalog-search">
+            <input type="text" class="catalog-search-input" placeholder="Search any unit by name…" autocomplete="off" />
+            <ul class="catalog-search-results" hidden></ul>
+          </div>
+          <input type="hidden" name="catalog_item_id" class="catalog-item-id-input" />
+          <div class="qty-price-row">
+            <input type="text" name="name" class="item-name-input" placeholder="Item name" required />
+            <input type="number" name="qty" class="item-qty-input" placeholder="Qty" value="1" min="1" required />
+            <input type="number" name="unit_price" class="item-price-input" placeholder="Price each (MSRP)" step="0.01" min="0" />
+            <button type="submit">Add</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="side" data-side="B">
+        <h2>Payment (goods)</h2>
+        <div class="item-list-header">
+          <span>Item</span>
+          <span>Qty</span>
+          <span>Price ea.</span>
+          <span>Total</span>
+          <span></span>
+        </div>
+        <ul class="item-list">
+          {% for item in commission.items if item.side == 'B' %}
+          <li class="item-row">
+            <span class="item-name">{{ item.name }}</span>
+            <span>{{ item.qty }}</span>
+            <span>${{ "%.2f"|format(item.unit_price) }}</span>
+            <span class="item-line-total">${{ "%.2f"|format(item.qty * item.unit_price) }}</span>
+            <form method="post" action="/commissions/{{ commission.code }}/items/{{ item.id }}/delete" class="history-delete">
+              <button type="submit" class="delete-btn" title="Remove item">🗑</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+        <form method="post" action="/commissions/{{ commission.code }}/items" class="add-item-form commission-add-item-form" data-side="B">
+          <input type="hidden" name="side" value="B" />
+          <div class="catalog-search">
+            <input type="text" class="catalog-search-input" placeholder="Search any unit by name…" autocomplete="off" />
+            <ul class="catalog-search-results" hidden></ul>
+          </div>
+          <input type="hidden" name="catalog_item_id" class="catalog-item-id-input" />
+          <div class="qty-price-row">
+            <input type="text" name="name" class="item-name-input" placeholder="Item name" required />
+            <input type="number" name="qty" class="item-qty-input" placeholder="Qty" value="1" min="1" required />
+            <input type="number" name="unit_price" class="item-price-input" placeholder="Price each" step="0.01" min="0" />
+            <button type="submit">Add</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/commission.js"></script>
+</body>
+</html>

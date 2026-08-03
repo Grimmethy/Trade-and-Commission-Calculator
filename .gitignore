@@ -4,5 +4,9 @@ __pycache__/
 venv/
 trade.db
 trade.db-journal
+trade.db.backup-*
 .env
 *.log
+instances/
+queue/
+task-domains.json

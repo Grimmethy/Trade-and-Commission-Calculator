@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Commission {{ commission.code }} — Verification Sheet</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="print-sheet">
+    <p class="no-print"><a href="/commissions/{{ commission.code }}">&larr; Back to commission</a> — use your browser's Print to print this page.</p>
+
+    <header class="print-header">
+      <h1>Commission {{ commission.code }}</h1>
+      <p>Painter: <strong>{{ commission.painter_name }}</strong> &middot; Status: <strong>{{ commission.status }}</strong></p>
+    </header>
+
+    <section class="print-summary">
+      <p>MSRP of submitted models: ${{ "%.2f"|format(totals.msrp_total) }}</p>
+      <p>Owed ({{ (commission.commission_rate * 100)|round(0)|int }}% of MSRP): ${{ "%.2f"|format(totals.owed_total) }}</p>
+      <p>Paid so far (cash + payment goods): ${{ "%.2f"|format(totals.paid_so_far) }}</p>
+      <p>
+        {% if totals.remainder_owed > 0.005 %}
+          <strong>Remaining owed: ${{ "%.2f"|format(totals.remainder_owed) }}</strong>
+        {% elif totals.remainder_owed < -0.005 %}
+          <strong>Overpaid by ${{ "%.2f"|format(-totals.remainder_owed) }}</strong>
+        {% else %}
+          <strong>Paid in full</strong>
+        {% endif %}
+      </p>
+      {% set payment_items = commission.items | selectattr('side', 'equalto', 'B') | list %}
+      {% if payment_items %}
+      <p>Payment goods:</p>
+      <ul>
+        {% for item in payment_items %}
+        <li>{{ item.qty }}x {{ item.name }} (${{ "%.2f"|format(item.qty * item.unit_price) }})</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+
+    <h2>Verification checklist — submitted models</h2>
+    <table class="print-checklist">
+      <thead>
+        <tr>
+          <th>Returned?</th>
+          <th>Model</th>
+          <th>Qty</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in commission.items if item.side == 'A' %}
+        <tr>
+          <td class="checklist-box">{% if item.verified %}&#9745;{% else %}&#9744;{% endif %}</td>
+          <td>{{ item.name }}</td>
+          <td>{{ item.qty }}</td>
+          <td class="checklist-notes">{{ item.verify_note or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>
