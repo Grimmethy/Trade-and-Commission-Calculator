@@ -10,6 +10,9 @@ COPY scripts/ scripts/
 COPY data/ data/
 
 ENV DATABASE_PATH=/data/trade.db
+ENV PHOTOS_DIR=/data/photos
+ENV EXPORTS_DIR=/data/exports
+ENV PRINT_ENABLED=false
 
 EXPOSE 8080
 

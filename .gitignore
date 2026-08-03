@@ -6,3 +6,9 @@ trade.db
 trade.db-journal
 .env
 *.log
+/photos/
+/exports/
+/labels/
+data/square_template.csv
+data/ebay_template.csv
+data/ebay_category_map.json

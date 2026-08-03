@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inventory — Trade Calculator</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="inventory-list-page">
+    <h1>Inventory</h1>
+    <p><a href="/">&larr; Home</a></p>
+
+    <div class="inventory-filters">
+      <a href="/inventory" class="{{ 'active' if not status_filter else '' }}">All</a>
+      <a href="/inventory?status=in_stock" class="{{ 'active' if status_filter == 'in_stock' else '' }}">In Stock</a>
+      <a href="/inventory?status=listed" class="{{ 'active' if status_filter == 'listed' else '' }}">Listed</a>
+      <a href="/inventory?status=sold" class="{{ 'active' if status_filter == 'sold' else '' }}">Sold</a>
+      <a href="/inventory?status=archived" class="{{ 'active' if status_filter == 'archived' else '' }}">Archived</a>
+    </div>
+
+    <details class="new-item-details">
+      <summary>+ Add new item</summary>
+      <form class="new-item-form">
+        <p class="sku-preview">SKU: <strong class="sku-preview-value">—</strong></p>
+
+        <div class="catalog-search">
+          <input type="text" class="catalog-search-input" placeholder="Search any unit by name…" autocomplete="off" />
+          <ul class="catalog-search-results" hidden></ul>
+        </div>
+
+        <p class="selected-unit" hidden></p>
+
+        <details class="catalog-picker-details">
+          <summary>Or browse by game / faction</summary>
+          <div class="catalog-picker">
+            <select class="ip-select">
+              <option value="" disabled selected>Game…</option>
+            </select>
+            <select class="faction-select" disabled>
+              <option value="" disabled selected>Faction…</option>
+            </select>
+            <select class="unit-select" disabled>
+              <option value="" disabled selected>Unit…</option>
+            </select>
+          </div>
+        </details>
+
+        <div class="manual-fields" hidden>
+          <input type="text" class="manual-name" placeholder="Item name" autocomplete="off" />
+          <input type="text" class="manual-ip" placeholder="Game (e.g. Warhammer 40,000)" />
+          <input type="text" class="manual-faction" placeholder="Faction" />
+        </div>
+
+        <div class="qty-price-row">
+          <input type="number" class="item-qty-input" placeholder="Qty" value="1" min="1" required />
+          <select class="condition-select" title="Condition">
+            <option value="assembled" selected>Assembled</option>
+            <option value="needs_repair">Needs Repair</option>
+            <option value="partial_paint">Partial Paint</option>
+            <option value="showcase">Showcase</option>
+          </select>
+          <button type="submit">Create</button>
+        </div>
+
+        <label class="manual-toggle">
+          <input type="checkbox" class="manual-toggle-checkbox" /> Can't find it? Enter manually
+        </label>
+      </form>
+    </details>
+
+    <div class="export-actions">
+      <a href="/inventory/export/square">Export for Square</a>
+      <a href="/inventory/export/ebay">Export for eBay</a>
+      <span class="export-hint">Downloads a CSV + photo folder — photos still need one manual upload pass per platform.</span>
+    </div>
+
+    {% if not items %}
+    <p class="share-hint">No inventory items yet.</p>
+    {% else %}
+    <ul class="inventory-list">
+      {% for item in items %}
+      <li class="inventory-row">
+        <a href="/inventory/{{ item.id }}" class="inventory-thumb">
+          {% if item.primary_photo %}
+          <img src="/photos/{{ item.sku }}/{{ item.primary_photo.filename }}" alt="" />
+          {% else %}
+          <span class="no-photo">No photo</span>
+          {% endif %}
+        </a>
+        <a href="/inventory/{{ item.id }}" class="inventory-sku">{{ item.sku }}</a>
+        <a href="/inventory/{{ item.id }}" class="inventory-name">{{ item.name }}</a>
+        <span class="inventory-status inventory-status-{{ item.status }}">{{ item.status }}</span>
+        <span class="inventory-qty">Qty {{ item.qty }}</span>
+        <span class="inventory-price">${{ "%.2f"|format(item.sp_max) if item.sp_max else "—" }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </main>
+  <script src="/static/inventory.js"></script>
+</body>
+</html>

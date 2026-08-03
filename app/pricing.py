@@ -18,6 +18,20 @@ CONDITION_LABELS = {
 
 DEFAULT_CONDITION = "assembled"
 
+SP_MIN_MULTIPLIER = 0.8
+SP_MAX_MULTIPLIER = 1.5
+
+
+def compute_sp_range(third_party_price: float) -> tuple[float, float]:
+    """SGC's standard asking-price range from a market/comp price: floor at 80%,
+    ceiling at 150%. Written once alongside third_party_price rather than
+    recomputed on every read, so a stored sp_min/sp_max always reflects the
+    multipliers in effect when it was priced."""
+    return (
+        round(third_party_price * SP_MIN_MULTIPLIER, 2),
+        round(third_party_price * SP_MAX_MULTIPLIER, 2),
+    )
+
 
 def apply_condition(base_price: float, condition: str) -> float:
     """Scales a price by a condition's multiplier — used when an item is first

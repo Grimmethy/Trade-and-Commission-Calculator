@@ -92,3 +92,93 @@ class CatalogItem:
             "image_url": self.image_url,
             "models_per_box": self.models_per_box,
         }
+
+
+@dataclass
+class InventoryPhoto:
+    id: int
+    inventory_item_id: int
+    filename: str
+    original_filename: str | None
+    content_type: str | None
+    is_primary: bool
+    sort_order: int
+    uploaded_at: str
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "inventory_item_id": self.inventory_item_id,
+            "filename": self.filename,
+            "original_filename": self.original_filename,
+            "content_type": self.content_type,
+            "is_primary": self.is_primary,
+            "sort_order": self.sort_order,
+            "uploaded_at": self.uploaded_at,
+        }
+
+
+@dataclass
+class InventoryItem:
+    id: int
+    sku: str
+    name: str
+    ip: str | None = None
+    faction: str | None = None
+    source: str = "manual"
+    catalog_item_id: int | None = None
+    box_price: float | None = None
+    models_per_box: int | None = None
+    qty: int = 1
+    condition: str = "assembled"
+    third_party_price: float | None = None
+    sp_min: float | None = None
+    sp_max: float | None = None
+    sell_price: float | None = None
+    date_sold: str | None = None
+    status: str = "in_stock"
+    notes: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    photos: list[InventoryPhoto] = field(default_factory=list)
+
+    @property
+    def primary_photo(self) -> InventoryPhoto | None:
+        for photo in self.photos:
+            if photo.is_primary:
+                return photo
+        return None
+
+    @property
+    def label_price(self) -> float:
+        """Asking price shown on the printed tag: sp_max, falling back down the
+        chain to whatever's actually set, unless the item has already sold, in
+        which case the real sell price is what belongs on a reprinted tag."""
+        if self.status == "sold" and self.sell_price is not None:
+            return self.sell_price
+        return self.sp_max or self.sp_min or self.third_party_price or 0.0
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "sku": self.sku,
+            "name": self.name,
+            "ip": self.ip,
+            "faction": self.faction,
+            "source": self.source,
+            "catalog_item_id": self.catalog_item_id,
+            "box_price": self.box_price,
+            "models_per_box": self.models_per_box,
+            "qty": self.qty,
+            "condition": self.condition,
+            "third_party_price": self.third_party_price,
+            "sp_min": self.sp_min,
+            "sp_max": self.sp_max,
+            "sell_price": self.sell_price,
+            "date_sold": self.date_sold,
+            "status": self.status,
+            "notes": self.notes,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "photos": [p.to_dict() for p in self.photos],
+        }

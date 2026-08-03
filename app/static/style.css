@@ -28,6 +28,17 @@ h1, h2 { margin: 0 0 0.5rem; }
   margin-top: 1rem;
 }
 
+.home-button-link {
+  display: inline-block;
+  font-size: 1.1rem;
+  padding: 0.75rem 1.5rem;
+  margin-top: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  text-decoration: none;
+  color: inherit;
+}
+
 .history-link {
   margin-top: 1.5rem;
   font-size: 0.9rem;
@@ -404,4 +415,192 @@ h1, h2 { margin: 0 0 0.5rem; }
     display: none;
   }
   .qty-price-row { grid-template-columns: 1fr; }
+}
+
+/* --- Inventory --- */
+
+.inventory-list-page, .inventory-detail-page {
+  max-width: 48rem;
+  margin: 2rem auto;
+}
+
+.inventory-filters {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+
+.inventory-filters a {
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.4rem;
+  text-decoration: none;
+}
+
+.inventory-filters a.active {
+  background: var(--accent);
+  color: white;
+}
+
+.new-item-details {
+  margin: 1rem 0;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.new-item-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.sku-preview {
+  flex-basis: 100%;
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+  font-family: monospace;
+}
+
+.export-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+}
+
+.export-hint {
+  opacity: 0.7;
+}
+
+.inventory-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inventory-row {
+  display: grid;
+  grid-template-columns: 3.5rem 6rem 1fr auto auto auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.inventory-thumb {
+  width: 3rem;
+  height: 3rem;
+  display: block;
+}
+
+.inventory-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.3rem;
+}
+
+.no-photo {
+  font-size: 0.65rem;
+  opacity: 0.6;
+}
+
+.inventory-sku {
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.inventory-status {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 1rem;
+  background: var(--border);
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.inventory-status-sold { background: #4caf5033; }
+.inventory-status-listed { background: #4a7fd633; }
+.inventory-status-archived { opacity: 0.6; }
+
+.item-fields, .item-pricing, .item-photos, .item-actions {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.item-fields label, .item-pricing label {
+  display: block;
+  margin-bottom: 0.6rem;
+}
+
+.item-fields input, .item-fields select, .item-fields textarea,
+.item-pricing input {
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.photo-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.photo-thumb {
+  width: 8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  overflow: hidden;
+}
+
+.photo-thumb.is-primary {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+
+.photo-thumb img {
+  width: 100%;
+  height: 8rem;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-thumb-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem;
+  font-size: 0.7rem;
+}
+
+.primary-badge {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+#zpl-preview {
+  white-space: pre-wrap;
+  font-size: 0.7rem;
+  max-height: 20rem;
+  overflow-y: auto;
+  background: #8881;
+  padding: 0.5rem;
+  border-radius: 0.4rem;
+}
+
+.danger-zone {
+  margin-top: 2rem;
+}
+
+.danger-zone button {
+  color: #c0392b;
 }
