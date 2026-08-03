@@ -1,5 +1,6 @@
 (function () {
   const roomCode = document.body.dataset.roomCode;
+  let currentCode = roomCode; // tracks the room's live code/URL, kept in sync by render() and renameRoomCode()
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
   const socket = new WebSocket(`${proto}://${window.location.host}/ws/${roomCode}`);
 
@@ -70,12 +71,15 @@
   }
 
   function render(state) {
-    if (state.room.code !== roomCodeEl.textContent) {
-      // Side B's name drives the room's actual code/URL — keep the address bar and
-      // title in sync so a page refresh still resolves (the old URL now 404s).
-      roomCodeEl.textContent = state.room.code;
-      document.title = `Trade Calculator — Room ${state.room.code}`;
-      history.replaceState(null, "", `/trade/${state.room.code}`);
+    if (document.activeElement !== roomCodeEl) {
+      currentCode = state.room.code;
+      if (state.room.code !== roomCodeEl.textContent) {
+        // Side B's name drives the room's actual code/URL — keep the address bar and
+        // title in sync so a page refresh still resolves (the old URL now 404s).
+        roomCodeEl.textContent = state.room.code;
+        document.title = `Trade Calculator — Room ${state.room.code}`;
+        history.replaceState(null, "", `/trade/${state.room.code}`);
+      }
     }
 
     const venued = state.room.trade_venue !== "direct";
@@ -540,6 +544,46 @@
   });
   cashBEl.addEventListener("change", () => {
     send("set_cash", { side: "B", amount: Number(cashBEl.value) });
+  });
+
+  roomCodeEl.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      roomCodeEl.blur();
+    }
+  });
+  roomCodeEl.addEventListener("blur", async () => {
+    const newName = roomCodeEl.textContent.trim();
+    if (!newName || newName === currentCode) {
+      roomCodeEl.textContent = currentCode;
+      return;
+    }
+    try {
+      // keepalive: without it, the browser aborts this request mid-flight if the
+      // user's blur was caused by clicking a link (e.g. "Past Trades") and the page
+      // starts navigating away before the response comes back.
+      const res = await fetch(`/rooms/${currentCode}/rename`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "new_name=" + encodeURIComponent(newName),
+        keepalive: true,
+      });
+      if (!res.ok) {
+        roomCodeEl.textContent = currentCode;
+        roomCodeEl.classList.add("rename-failed");
+        setTimeout(() => roomCodeEl.classList.remove("rename-failed"), 1500);
+        return;
+      }
+      const newCode = res.url.split("/").pop();
+      currentCode = newCode;
+      roomCodeEl.textContent = newCode;
+      document.title = `Trade Calculator — Room ${newCode}`;
+      history.replaceState(null, "", `/trade/${newCode}`);
+    } catch {
+      roomCodeEl.textContent = currentCode;
+      roomCodeEl.classList.add("rename-failed");
+      setTimeout(() => roomCodeEl.classList.remove("rename-failed"), 1500);
+    }
   });
 
   labelAEl.addEventListener("blur", () => {

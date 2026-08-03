@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from app.models import Item, Room
+from app.models import Commission, Item, Room
 
 CONDITION_MULTIPLIERS = {
     "needs_repair": 0.80,
@@ -126,6 +126,32 @@ class TotalsResult:
     diff: float
     suggested_topup_side: str | None
     suggested_topup_amount: float
+
+
+@dataclass
+class PaintingTotals:
+    """Money math for a painting commission (app/models.py's Commission) — distinct
+    from compute_commission_amount()/DEFAULT_COMMISSION_RATE above, which are a
+    trade room's cut-of-the-trade fee, an unrelated concept that happens to share
+    the word "commission"."""
+
+    msrp_total: float  # raw catalog MSRP of the submitted-for-painting (side A) items
+    owed_total: float  # msrp_total * commission.commission_rate
+    paid_so_far: float  # cash_amount + value of payment-goods (side B) items
+    remainder_owed: float  # owed_total - paid_so_far (negative means overpaid)
+
+
+def compute_painting_totals(commission: Commission) -> PaintingTotals:
+    msrp_total = side_total(commission.items, "A")
+    owed_total = round(commission.commission_rate * msrp_total, 2)
+    paid_so_far = round(commission.cash_amount + side_total(commission.items, "B"), 2)
+    remainder_owed = round(owed_total - paid_so_far, 2)
+    return PaintingTotals(
+        msrp_total=msrp_total,
+        owed_total=owed_total,
+        paid_so_far=paid_so_far,
+        remainder_owed=remainder_owed,
+    )
 
 
 def compute_totals(room: Room) -> TotalsResult:

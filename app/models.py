@@ -13,6 +13,8 @@ class Item:
     box_price: float | None = None
     models_per_box: int | None = None
     condition: str = "assembled"
+    verified: bool = False
+    verify_note: str | None = None
 
     @property
     def line_total(self) -> float:
@@ -31,6 +33,8 @@ class Item:
             "box_price": self.box_price,
             "models_per_box": self.models_per_box,
             "condition": self.condition,
+            "verified": self.verified,
+            "verify_note": self.verify_note,
         }
 
 
@@ -67,6 +71,26 @@ class Room:
             "commission_rate": self.commission_rate,
             "commission_base": self.commission_base,
             "commission_flat_amount": self.commission_flat_amount,
+        }
+
+
+@dataclass
+class Commission:
+    id: int
+    code: str
+    painter_name: str
+    status: str
+    commission_rate: float
+    cash_amount: float
+    items: list[Item] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "code": self.code,
+            "painter_name": self.painter_name,
+            "status": self.status,
+            "commission_rate": self.commission_rate,
+            "cash_amount": self.cash_amount,
         }
 
 

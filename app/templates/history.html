@@ -21,6 +21,10 @@
         <span class="history-labels">{{ room.label_a }} vs {{ room.label_b }}</span>
         <span class="history-totals">${{ "%.2f"|format(room.total_a) }} / ${{ "%.2f"|format(room.total_b) }}</span>
         <span class="history-count">{{ room.item_count }} item{{ "" if room.item_count == 1 else "s" }}</span>
+        <form class="history-delete" method="post" action="/rooms/{{ room.code }}/delete"
+              onsubmit="return confirm('Delete trade {{ room.code }}? This cannot be undone.');">
+          <button type="submit" class="delete-btn" title="Delete trade" aria-label="Delete trade">🗑</button>
+        </form>
         <span class="history-date">{{ room.updated_at }}</span>
       </li>
       {% endfor %}

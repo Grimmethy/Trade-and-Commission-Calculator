@@ -4,6 +4,7 @@ __pycache__/
 venv/
 trade.db
 trade.db-journal
+trade.db.backup-*
 .env
 *.log
 /photos/
@@ -12,3 +13,6 @@ trade.db-journal
 data/square_template.csv
 data/ebay_template.csv
 data/ebay_category_map.json
+instances/
+queue/
+task-domains.json

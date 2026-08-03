@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.db import lifespan
 from app.photos import PHOTOS_DIR
-from app.routers import catalog, gaps, inventory, rooms, ws
+from app.routers import catalog, commissions, gaps, inventory, rooms, ws
 
 app = FastAPI(title="Trade Calculator", lifespan=lifespan)
 
@@ -17,3 +17,4 @@ app.include_router(ws.router)
 app.include_router(catalog.router)
 app.include_router(gaps.router)
 app.include_router(inventory.router)
+app.include_router(commissions.router)

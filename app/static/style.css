@@ -60,13 +60,31 @@ h1, h2 { margin: 0 0 0.5rem; }
 
 .history-row {
   display: grid;
-  grid-template-columns: 4.5rem 1fr auto auto;
+  grid-template-columns: 4.5rem 1fr auto auto auto;
   gap: 0.6rem;
   align-items: center;
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   font-size: 0.9rem;
+}
+
+.history-delete {
+  margin: 0;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: #c0392b;
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.2rem;
+}
+
+.delete-btn:hover {
+  opacity: 0.75;
 }
 
 .history-code {
@@ -87,7 +105,7 @@ h1, h2 { margin: 0 0 0.5rem; }
 }
 
 @media (min-width: 30rem) {
-  .history-row { grid-template-columns: 4.5rem 1fr auto auto auto; }
+  .history-row { grid-template-columns: 4.5rem 1fr auto auto auto auto; }
   .history-date { grid-column: auto; }
 }
 
@@ -96,6 +114,18 @@ h1, h2 { margin: 0 0 0.5rem; }
   background: #8882;
   padding: 0.1em 0.4em;
   border-radius: 0.3em;
+  outline: none;
+  border-bottom: 1px dashed transparent;
+  cursor: text;
+}
+
+.room-header .room-code:focus {
+  border-bottom-color: var(--accent);
+}
+
+.room-code.rename-failed, .commission-code.rename-failed {
+  outline: 2px solid #c0392b;
+  outline-offset: 2px;
 }
 
 .share-hint {
@@ -603,4 +633,119 @@ h1, h2 { margin: 0 0 0.5rem; }
 
 .danger-zone button {
   color: #c0392b;
+}
+
+/* Painting commissions */
+
+.new-commission-form {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.new-commission-form input {
+  flex: 1;
+  padding: 0.4rem;
+}
+
+.commission-row {
+  grid-template-columns: 4.5rem 1fr auto auto auto auto;
+}
+
+.commission-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 0.15em 0.5em;
+  border-radius: 0.3em;
+  white-space: nowrap;
+}
+
+.status-submitted { background: color-mix(in srgb, #4a7fd6 15%, transparent); color: #4a7fd6; }
+.status-returned { background: color-mix(in srgb, #d6a84a 20%, transparent); color: #8a6a1f; }
+.status-verified { background: color-mix(in srgb, #3fa34d 18%, transparent); color: #2c7a37; }
+
+.commission-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin: var(--gap) 0;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-form, .status-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.settings-form input {
+  width: 6rem;
+  padding: 0.3rem;
+}
+
+.commission-item-row {
+  grid-template-columns: 1fr 3rem 5rem 5.5rem 1fr auto;
+}
+
+.verify-item-form {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.verify-note-input {
+  min-width: 0;
+  flex: 1;
+  padding: 0.25rem;
+}
+
+/* Printer-friendly verification sheet */
+
+.print-sheet {
+  max-width: 40rem;
+  margin: 2rem auto;
+}
+
+.print-header h1 {
+  margin-bottom: 0.2rem;
+}
+
+.print-summary p {
+  margin: 0.2rem 0;
+}
+
+.print-checklist {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+}
+
+.print-checklist th, .print-checklist td {
+  border: 1px solid var(--border);
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.checklist-box {
+  text-align: center;
+  font-size: 1.2rem;
+  width: 3rem;
+}
+
+.checklist-notes {
+  min-width: 8rem;
+}
+
+@media print {
+  .no-print {
+    display: none;
+  }
 }
