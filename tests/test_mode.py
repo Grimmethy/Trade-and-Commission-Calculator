@@ -54,3 +54,12 @@ def test_private_has_admin_pages(monkeypatch, tmp_path):
     with make_client(monkeypatch, tmp_path, "private") as c:
         assert c.get("/history").status_code == 200 and c.get("/commissions").status_code == 200
         assert "past trades" in c.get("/").text
+
+
+def test_public_commission_sheet_hides_owner_controls(monkeypatch, tmp_path):
+    with make_client(monkeypatch, tmp_path, "private") as c:
+        r = c.post("/commissions", data={"painter_name": "Test Painter"}, follow_redirects=False)
+        url = r.headers["location"]
+        assert 'class="readonly"' not in c.get(url).text
+    with make_client(monkeypatch, tmp_path, "public") as c:
+        assert 'readonly' in c.get(url).text

@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app import catalog as catalog_service
+from app import mode
 from app import commissions as commissions_service
 from app.pricing import compute_painting_totals, derive_per_model_price
 
@@ -28,7 +29,7 @@ async def commission_detail(request: Request, code: str):
     if commission is None:
         raise HTTPException(status_code=404, detail="Commission not found")
     totals = compute_painting_totals(commission)
-    return templates.TemplateResponse(request, "commission_detail.html", {"commission": commission, "totals": totals})
+    return templates.TemplateResponse(request, "commission_detail.html", {"commission": commission, "totals": totals, "private": mode.MODE == "private"})
 
 
 @router.post("/commissions/{code}/rename")

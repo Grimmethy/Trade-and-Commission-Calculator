@@ -8,7 +8,7 @@
   <title>Trade Calculator — Commission {{ commission.code }}</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
-<body data-commission-code="{{ commission.code }}">
+<body data-commission-code="{{ commission.code }}"{% if not private %} class="readonly"{% endif %}>
   <main class="room commission-detail">
     <header class="room-header">
       <h1>Commission <span class="room-code commission-code" id="commission-code" contenteditable="true" title="Click to rename this commission">{{ commission.code }}</span>
