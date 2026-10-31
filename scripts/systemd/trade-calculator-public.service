@@ -1,0 +1,15 @@
+# Public trade calculator (customer-facing). Binds 127.0.0.1:7463 only; the Cloudflare tunnel is the only way in.
+# Install: mkdir -p ~/.config/systemd/user && cp scripts/systemd/trade-calculator-public.service ~/.config/systemd/user/
+#          systemctl --user daemon-reload && systemctl --user enable --now trade-calculator-public
+[Unit]
+Description=Trade calculator (public, 127.0.0.1:7463)
+After=network.target
+
+[Service]
+WorkingDirectory=/media/model-cache/github/trade-calculator
+ExecStart=/media/model-cache/github/trade-calculator/run.sh public
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

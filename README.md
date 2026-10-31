@@ -1,3 +1,21 @@
+# Trade Calculator (Agent Manager plugin)
+
+Two instances of the same app, split by `TRADE_MODE` (`app/mode.py`):
+
+| | Private (AM tab "Trade Calc") | Public (website) |
+|---|---|---|
+| Port | 7462, `./run.sh private` (lazy-started by AM) | 7463, `./run.sh public`, unit in `scripts/systemd/` |
+| Routes | everything incl. history, commissions admin, gaps, stock lookup | ALLOWLIST only: home, new trade room, trade room + websocket, catalog search, read-only commission sheet |
+| Data | `data/trade-private.db` (copied from the old standalone app) | `data/trade-public.db` |
+| Inventory | reads the inventory plugin (`INVENTORY_URL`, :7460) via `/api/inventory/items`; "Our stock" box in each trade room | none, ever |
+
+- Public is fail-closed: `TRADE_MODE` defaults to `public`, and any new route is 404 there until added to `_PUBLIC`. New trade rooms are limited to 20/hour per client.
+- Phone: the AM tailnet gateway already fronts :7462 (`http://<tailnet ip>:7462`). Both modes serve a web manifest + service worker, so "Add to Home Screen" installs it.
+- The old in-app inventory (`app/routers/inventory.py`, labels, exports) is retired: no longer mounted. The inventory plugin is the one inventory system. Delete that code when the owner agrees.
+- Website: `trade.<domain>` via a Cloudflare tunnel to `127.0.0.1:7463`, linked/embedded from the Square site. Not exposed yet.
+
+Original README follows.
+
 # Trade Calculator
 
 A small web app for negotiating a miniatures trade live with someone else: each side adds
