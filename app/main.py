@@ -3,7 +3,6 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.db import lifespan
-from app.photos import PHOTOS_DIR
 from app import mode
 from app.routers import catalog, commissions, gaps, inventory_link, rooms, ws
 
@@ -11,16 +10,12 @@ app = FastAPI(title="Trade Calculator", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/photos", StaticFiles(directory=str(PHOTOS_DIR)), name="photos")
-
 app.include_router(rooms.router)
 app.include_router(ws.router)
 app.include_router(catalog.router)
 app.include_router(gaps.router)
 app.include_router(commissions.router)
-# The in-app inventory (app/routers/inventory.py) is retired: the inventory plugin is the one inventory system. Its code stays
-# in the tree until the owner agrees to delete it; it is no longer mounted.
+# The in-app inventory was removed: the inventory plugin is the one inventory system (private mode reads it, see inventory_link).
 if mode.MODE == "private":
     app.include_router(inventory_link.router)
 
