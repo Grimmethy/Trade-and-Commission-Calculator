@@ -144,3 +144,26 @@ Replace the empty `catch` block with one that logs the error to `console.error` 
 
 Benefits:
 Operators can now debug rename failures by checking console logs, and users won’t be left with unexplained UI states without any diagnostic trail — even without metrics, observability is restored via logging.
+
+### AC-7 · Silent WebSocket Failure Without Logging or Rethrow
+Strength: Strong
+Files: app/websocket_manager.py
+Snippet:
+```
+        for ws in sockets:
+            try:
+                await ws.send_text(payload)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            sockets.discard(ws)
+```
+
+Problem:
+The `broadcast` function silently catches any exception thrown during `ws.send_text(payload)` and removes the WebSocket from the set without logging or re-raising. This means connection failures — such as network errors, client disconnections, or protocol violations — are invisible to the caller. Since the function returns `None`, the caller cannot reasonably handle a silent failure, making this a genuine observability hygiene issue. Without logging, operators or developers have no visibility into when or why WebSocket messages fail, leading to potential silent data loss or confusion in message delivery.
+
+Solution:
+Log the exception with context including the WebSocket and room ID, then re-raise to surface the error to the caller. Since the function returns `None`, re-raising is appropriate to force visibility — e.g., in the WebSocket server loop or higher-level logic. If the caller cannot act on it, logging is sufficient to make the error visible for debugging.
+
+Benefits:
+Once fixed, the system gains visibility into WebSocket connection failures through logs, enabling faster debugging and preventing silent data loss or duplicate message delivery. The fix uses only available primitives (`logging`) and does not fabricate metrics or telemetry.
