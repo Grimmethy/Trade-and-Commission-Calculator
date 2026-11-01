@@ -691,7 +691,17 @@ h1, h2 { margin: 0 0 0.5rem; }
 }
 
 .commission-item-row {
-  grid-template-columns: 1fr 3rem 5rem 5.5rem 1fr auto;
+  grid-template-columns: minmax(9rem, 1.4fr) 2.5rem 4.5rem 5rem minmax(13rem, 2fr) auto;
+}
+.commission-list-header {
+  grid-template-columns: minmax(9rem, 1.4fr) 2.5rem 4.5rem 5rem minmax(13rem, 2fr) auto;
+}
+.commission-list-header span:nth-child(5) { text-align: left; }
+.commission-item-row .item-name { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 40rem) {
+  .commission-list-header { display: none; }
+  .commission-item-row { grid-template-columns: 1fr auto auto; }
+  .commission-item-row .verify-item-form, .commission-item-row .returned-state { grid-column: 1 / -1; }
 }
 
 .verify-item-form {
@@ -759,3 +769,34 @@ h1, h2 { margin: 0 0 0.5rem; }
 
 /* Public mode: commission sheet is read-only, so owner forms and buttons are hidden */
 body.readonly form, body.readonly .delete-btn, body.readonly .manual-toggle { display: none !important; }
+
+/* Home page: optional pinned links (data/pinned-links.json) */
+.pinned-links { margin: 1.25rem auto 0; max-width: 28rem; text-align: left; }
+.pinned-links h2 { font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; opacity: .65; margin: 0 0 .4rem; }
+.pinned-links ul { list-style: none; margin: 0; padding: 0; }
+.pinned-links li { margin: 0 0 .4rem; }
+.pinned-links a { display: block; padding: .75rem .9rem; min-height: 2.75rem; box-sizing: border-box; border: 1px solid #8884; border-radius: 8px; text-decoration: none; }
+
+/* Commission sheet: returned checkbox and note save instantly (commission.js adds body.js); progress and read-only state */
+body.js .verify-save-btn { display: none; }
+.verify-item-form { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.returned-check { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; min-height: 2.75rem; cursor: pointer; }
+.returned-check input { width: 1.5rem; height: 1.5rem; }
+.verify-note-input { min-height: 2.75rem; flex: 1 1 10rem; font-size: 1rem; box-sizing: border-box; }
+.verify-status { font-size: .85rem; color: #2e7d32; min-width: 4.5rem; }
+.verify-status.verify-failed { color: #c62828; cursor: pointer; text-decoration: underline; }
+.returned-progress { font-weight: 600; margin: .5rem 0; }
+.returned-state { color: #666; }
+.returned-state.is-returned { color: #2e7d32; font-weight: 600; }
+
+/* Commission sheet: add from inventory */
+.inventory-add { position: relative; margin: .75rem 0; }
+.inventory-add-label { display: block; font-weight: 600; margin-bottom: .25rem; }
+.inventory-search-input { width: 100%; box-sizing: border-box; min-height: 2.75rem; font-size: 1rem; }
+.inventory-results { position: absolute; z-index: 6; left: 0; right: 0; margin: .15rem 0 0; padding: 0; list-style: none; background: Canvas; color: CanvasText; border: 1px solid #8886; border-radius: 6px; max-height: 50vh; overflow-y: auto; box-shadow: 0 4px 14px #0003; }
+.inventory-result { padding: .7rem .8rem; min-height: 2.75rem; box-sizing: border-box; border-bottom: 1px solid #8883; cursor: pointer; }
+.inventory-result:hover, .inventory-result:focus { background: #8882; outline: none; }
+.inventory-result.already { opacity: .5; cursor: default; }
+.inventory-message { min-height: 1.2em; margin: .25rem 0 0; font-size: .9rem; }
+.inventory-message.inventory-error { color: #c62828; }
+

@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from app import catalog as catalog_service
 from app import mode
 from app import commissions as commissions_service
+from app.routers import inventory_link
 from app.pricing import compute_painting_totals, derive_per_model_price
 
 router = APIRouter()
@@ -96,16 +97,68 @@ async def add_commission_item_route(
     return RedirectResponse(url=f"/commissions/{code}", status_code=303)
 
 
+@router.post("/commissions/{code}/items/by-inventory")
+async def add_commission_item_by_inventory(code: str, inventory_code: str = Form(..., max_length=40)):
+    """Add one box from the inventory to the 'submitted for painting' side, priced by the INVENTORY (never by the browser):
+    MSRP when it has one, else the listed price. Item name is 'CODE name' so the tin code is readable on the sheet."""
+    commission = await commissions_service.get_commission(code)
+    if commission is None:
+        raise HTTPException(status_code=404, detail="Commission not found")
+    item = inventory_link.lookup_stock(inventory_code)            # HTTPException 502 when the inventory plugin is down
+    if item is None:
+        raise HTTPException(status_code=404, detail=f"No item with code {inventory_code.strip().upper()} on the shelf")
+    prefix = item["code"].upper() + " "
+    if any(i.side == "A" and i.name.upper().startswith(prefix) for i in commission.items):
+        raise HTTPException(status_code=409, detail=f"{item['code']} is already on this commission")
+    if item.get("msrp"):
+        price, basis = float(item["msrp"]), "msrp"
+    else:
+        price, basis = inventory_link.listed_price(item.get("listed_on")), "listed"
+        if price is None:
+            raise HTTPException(status_code=422, detail=f"{item['code']} has no MSRP or listed price; add it by hand with a price")
+    name = f"{item['code']} {item['name']}"
+    await commissions_service.add_commission_item(commission.id, "A", name, 1, price, "manual", None, None, None)
+    return {"ok": True, "name": name, "unit_price": price, "price_basis": basis}
+
+
 @router.post("/commissions/{code}/items/{item_id}/delete")
 async def delete_commission_item(code: str, item_id: int):
     await commissions_service.remove_commission_item(item_id)
     return RedirectResponse(url=f"/commissions/{code}", status_code=303)
 
 
+async def _side_a_item_or_404(code: str, item_id: int):
+    """The commission and one of ITS side-A items, or 404: an item id from another commission must never be editable here."""
+    commission = await commissions_service.get_commission(code)
+    if commission is None:
+        raise HTTPException(status_code=404, detail="Commission not found")
+    item = next((i for i in commission.items if i.id == item_id and i.side == "A"), None)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found on this commission")
+    return commission
+
+
+def _clean_note(note: str | None) -> str | None:
+    note = (note or "").strip()[:500]
+    return note or None
+
+
 @router.post("/commissions/{code}/items/{item_id}/verify")
 async def verify_commission_item(code: str, item_id: int, verified: bool = Form(False), note: str = Form(None)):
-    await commissions_service.set_item_verification(item_id, verified, note)
+    await _side_a_item_or_404(code, item_id)
+    await commissions_service.set_item_verification(item_id, verified, _clean_note(note))
     return RedirectResponse(url=f"/commissions/{code}", status_code=303)
+
+
+@router.post("/commissions/{code}/items/{item_id}/verify.json")
+async def verify_commission_item_json(code: str, item_id: int, verified: bool = Form(False), note: str = Form(None)):
+    """Instant save for the checkbox and the note box: no redirect, returns the new progress count."""
+    await _side_a_item_or_404(code, item_id)
+    await commissions_service.set_item_verification(item_id, verified, _clean_note(note))
+    commission = await commissions_service.get_commission(code)
+    side_a = [i for i in commission.items if i.side == "A"]
+    return {"ok": True, "verified": bool(verified), "note": _clean_note(note) or "",
+            "returned_count": sum(1 for i in side_a if i.verified), "total": len(side_a), "status": commission.status}
 
 
 @router.post("/commissions/{code}/status")

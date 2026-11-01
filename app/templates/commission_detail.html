@@ -8,6 +8,8 @@
   <title>Trade Calculator — Commission {{ commission.code }}</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
+{% set side_a_items = commission.items | selectattr('side', 'equalto', 'A') | list %}
+{% set returned_count = side_a_items | selectattr('verified') | list | length %}
 <body data-commission-code="{{ commission.code }}"{% if not private %} class="readonly"{% endif %}>
   <main class="room commission-detail">
     <header class="room-header">
@@ -35,6 +37,16 @@
       </div>
     </section>
 
+    <section class="returned-progress-bar">
+      <p class="returned-progress" id="returned-progress" aria-live="polite"><span id="returned-count">{{ returned_count }}</span> of <span id="returned-total">{{ side_a_items | length }}</span> returned</p>
+      {% if private %}
+      <form method="post" action="/commissions/{{ commission.code }}/status" id="mark-returned-form" {% if not (side_a_items | length > 0 and returned_count == side_a_items | length and commission.status == 'submitted') %}hidden{% endif %}>
+        <input type="hidden" name="status" value="returned" />
+        <button type="submit">All returned: mark commission returned</button>
+      </form>
+      {% endif %}
+    </section>
+
     <section class="commission-settings">
       <form method="post" action="/commissions/{{ commission.code }}/settings" class="settings-form">
         <label>Painter: <input type="text" name="painter_name" value="{{ commission.painter_name }}" required /></label>
@@ -58,13 +70,12 @@
     <section class="sides">
       <div class="side" data-side="A">
         <h2>Submitted for painting</h2>
-        <div class="item-list-header">
+        <div class="item-list-header commission-list-header">
           <span>Item</span>
           <span>Qty</span>
           <span>Price ea.</span>
           <span>Total</span>
-          <span>Returned?</span>
-          <span>Note</span>
+          <span>Returned? / note</span>
           <span></span>
         </div>
         <ul class="item-list">
@@ -74,17 +85,30 @@
             <span>{{ item.qty }}</span>
             <span>${{ "%.2f"|format(item.unit_price) }}</span>
             <span class="item-line-total">${{ "%.2f"|format(item.qty * item.unit_price) }}</span>
-            <form method="post" action="/commissions/{{ commission.code }}/items/{{ item.id }}/verify" class="verify-item-form">
-              <input type="checkbox" name="verified" value="true" {% if item.verified %}checked{% endif %} />
-              <input type="text" name="note" value="{{ item.verify_note or '' }}" placeholder="Note" class="verify-note-input" />
-              <button type="submit">Save</button>
+            {% if private %}
+            <form method="post" action="/commissions/{{ commission.code }}/items/{{ item.id }}/verify" class="verify-item-form" data-item-id="{{ item.id }}">
+              <label class="returned-check"><input type="checkbox" name="verified" value="true" {% if item.verified %}checked{% endif %} aria-label="Returned: {{ item.name }}" /></label>
+              <input type="text" name="note" value="{{ item.verify_note or '' }}" placeholder="Note" class="verify-note-input" maxlength="500" aria-label="Note for {{ item.name }}" />
+              <button type="submit" class="verify-save-btn">Save</button>
+              <span class="verify-status" aria-live="polite"></span>
             </form>
+            {% else %}
+            <span class="returned-state{% if item.verified %} is-returned{% endif %}">{{ 'Returned' if item.verified else 'Not yet' }}{% if item.verify_note %} &middot; {{ item.verify_note }}{% endif %}</span>
+            {% endif %}
             <form method="post" action="/commissions/{{ commission.code }}/items/{{ item.id }}/delete" class="history-delete">
               <button type="submit" class="delete-btn" title="Remove item">🗑</button>
             </form>
           </li>
           {% endfor %}
         </ul>
+        {% if private %}
+        <div class="inventory-add">
+          <label class="inventory-add-label" for="inventory-search">Add from inventory</label>
+          <input type="search" id="inventory-search" class="inventory-search-input" placeholder="Type part of a code or name, e.g. KAC03 or trajann" autocomplete="off" />
+          <ul class="inventory-results" hidden></ul>
+          <p class="inventory-message" aria-live="polite"></p>
+        </div>
+        {% endif %}
         <form method="post" action="/commissions/{{ commission.code }}/items" class="add-item-form commission-add-item-form" data-side="A">
           <input type="hidden" name="side" value="A" />
           <div class="catalog-search">
