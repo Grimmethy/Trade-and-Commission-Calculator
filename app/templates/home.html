@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111111" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <title>Trade Calculator</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
@@ -13,8 +15,10 @@
     <form method="post" action="/rooms">
       <button type="submit">Start a new trade</button>
     </form>
-    <a href="/inventory" class="home-button-link">Manage Inventory</a>
-    <p class="history-link"><a href="/history">View past trades</a> &middot; <a href="/commissions">Painting commissions</a></p>
+    {% if private %}
+    <p class="history-link"><a href="/history">View past trades</a> &middot; <a href="/commissions">Painting commissions</a> &middot; <a href="/gaps">Catalog gaps</a></p>
+    {% endif %}
   </main>
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");</script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+from app import mode
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -10,7 +11,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request, "home.html")
+    return templates.TemplateResponse(request, "home.html", {"private": mode.MODE == "private"})
 
 
 @router.post("/rooms")
@@ -25,7 +26,7 @@ async def trade_room(request: Request, code: str):
     if room is None:
         raise HTTPException(status_code=404, detail="Trade room not found")
     return templates.TemplateResponse(
-        request, "trade_room.html", {"room_code": code}
+        request, "trade_room.html", {"room_code": code, "private": mode.MODE == "private"}
     )
 
 

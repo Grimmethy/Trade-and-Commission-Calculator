@@ -749,3 +749,13 @@ h1, h2 { margin: 0 0 0.5rem; }
     display: none;
   }
 }
+
+/* Private mode: stock lookup inside the add-item form */
+.stock-search { position: relative; margin-bottom: .5rem; }
+.stock-input { width: 100%; box-sizing: border-box; min-height: 2.75rem; font-size: 1rem; }
+.stock-results { position: absolute; z-index: 5; left: 0; right: 0; margin: 0; padding: 0; list-style: none; background: #1b1b1b; border: 1px solid #444; border-radius: 6px; max-height: 40vh; overflow-y: auto; }
+.stock-results li { padding: .7rem .8rem; border-bottom: 1px solid #333; cursor: pointer; }
+.stock-results li:active, .stock-results li:hover { background: #2a2a2a; }
+
+/* Public mode: commission sheet is read-only, so owner forms and buttons are hidden */
+body.readonly form, body.readonly .delete-btn, body.readonly .manual-toggle { display: none !important; }

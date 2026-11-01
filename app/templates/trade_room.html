@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111111" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <title>Trade Calculator — Room {{ room_code }}</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
@@ -99,5 +101,7 @@
   </main>
 
   <script src="/static/trade.js"></script>
+  {% if private %}<script src="/static/stock.js"></script>{% endif %}
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");</script>
 </body>
 </html>

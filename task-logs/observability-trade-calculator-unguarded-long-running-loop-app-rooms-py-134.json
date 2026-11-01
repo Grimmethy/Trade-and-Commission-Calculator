@@ -1,0 +1,156 @@
+{
+  "id": "observability-trade-calculator-unguarded-long-running-loop-app-rooms-py-134",
+  "title": "Observability triage: unguarded-long-running-loop — trade-calculator (app/rooms.py:134)",
+  "domain": "default",
+  "source": "observability_review",
+  "createdAt": "2026-10-31T22:29:13.601Z",
+  "history": [
+    {
+      "stage": "created",
+      "at": "2026-10-31T22:29:13.601Z",
+      "detail": "observability_review"
+    },
+    {
+      "stage": "draft-started",
+      "at": "2026-10-31T22:29:15.896Z"
+    },
+    {
+      "stage": "plan-done",
+      "at": "2026-10-31T22:31:47.395Z",
+      "detail": "1 attempt(s), 2407 chars"
+    },
+    {
+      "stage": "implement-started",
+      "at": "2026-10-31T22:31:47.396Z",
+      "detail": "implement pass"
+    },
+    {
+      "stage": "implement-oversized",
+      "at": "2026-10-31T22:34:31.061Z",
+      "detail": "evalTok=333 latencyMs=94703 (caps 1000/20000ms) -- retried once with strict-cite, retry evalTok=264 latencyMs=68960"
+    },
+    {
+      "stage": "implement-done",
+      "at": "2026-10-31T22:34:31.066Z",
+      "detail": "1 attempt(s), 1266 chars"
+    },
+    {
+      "stage": "draft-done",
+      "at": "2026-10-31T22:34:31.067Z",
+      "detail": "qwen3-vl:8b-instruct"
+    },
+    {
+      "stage": "needs-review",
+      "at": "2026-10-31T22:34:31.067Z"
+    },
+    {
+      "stage": "draft-attempt",
+      "at": "2026-10-31T22:34:31.067Z",
+      "detail": "attempt 1: succeeded"
+    },
+    {
+      "stage": "review-started",
+      "at": "2026-10-31T22:40:19.123Z"
+    },
+    {
+      "stage": "approved",
+      "at": "2026-10-31T22:40:34.215Z",
+      "detail": "votes: 2/3 real"
+    }
+  ],
+  "promptContext": {
+    "rule": "unguarded-long-running-loop",
+    "detail": "long-running loop with no heartbeat/health-check signal within 40 lines",
+    "file": "app/rooms.py",
+    "line": 134,
+    "projectSlug": "trade-calculator",
+    "snippet": "async def _unique_code_for_slug(db, base_slug: str, row_id: int, table: str = \"rooms\") -> str:\n    candidate = base_slug\n    suffix = 2\n    while True:\n        row = await (\n            await db.execute(\n                f\"SELECT id FROM {table} WHERE code = ? AND id != ?\", (candidate, row_id)",
+    "enclosingCode": "--- app/rooms.py lines 122-140 (the flagged block + surrounding code, read from the file) ---\n    ).fetchall()\n    return [dict(r) for r in rows]\n\n\nasync def set_cash(room_id: int, side: str, amount: float) -> None:\n    column = \"cash_a\" if side == \"A\" else \"cash_b\"\n    await _update_row(\"rooms\", room_id, {column: amount}, touch_updated_at=True)\n\n\nasync def _unique_code_for_slug(db, base_slug: str, row_id: int, table: str = \"rooms\") -> str:\n    candidate = base_slug\n    suffix = 2\n    while True:\n        row = await (\n            await db.execute(\n                f\"SELECT id FROM {table} WHERE code = ? AND id != ?\", (candidate, row_id)\n            )\n        ).fetchone()\n        if row is None:"
+  },
+  "draftAttempts": [
+    {
+      "at": "2026-10-31T22:29:15.893Z",
+      "attemptNo": 1,
+      "lane": "worker-rx580",
+      "source": "observability_review",
+      "localRejectCount": 0,
+      "tiers": [],
+      "factCheckWarnings": [],
+      "plan": {
+        "chars": 2407,
+        "text": "1. GENUINE issue — here's the concrete risk (e.g. a real background-task error swallowed silently) and a proposed fix\n\nThe flagged block is an infinite loop (`while True`) that does not have any explicit heartbeat or health-check signal within the 40-line window. The loop may run indefinitely without any observable progress or failure indication — which is a classic observability hygiene issue. Since the project has no metrics system, there is no way to monitor the loop’s health or detect if it’s stuck. The loop also does not log or throw any error if it fails to find a unique code (e.g., if the database is down or the query fails silently).\n\nThe risk: If the loop runs indefinitely or fails to terminate due to a bug or external condition (e.g., database lock, query timeout, or misconfigured slug), it will be invisible to operators — no logs, no metrics, no alerts. This could lead to silent resource exhaustion or data inconsistency.\n\nProposed fix (using only available primitives — logging):\n\n```python\nimport logging\n\nasync def _unique_code_for_slug(db, base_slug: str, row_id: int, table: str = \"rooms\") -> str:\n    candidate = base_slug\n    suffix = 2\n    while True:\n        row = await (\n            await db.execute(\n                f\"SELECT id FROM {table} WHERE code = ? AND id != ?\", (candidate, row_id)\n            )\n        ).fetchone()\n        if row is None:\n            break  # found unique code\n        suffix += 1\n        candidate = f\"{base_slug}{suffix}\"\n\n        # Add a heartbeat log every 1000 iterations to detect stalls\n        if suffix % 1000 == 0:\n            logging.warning(f\"Generating unique code for slug '{base_slug}' — iteration {suffix} (room_id={row_id})\")\n\n    return candidate\n```\n\nThis fix adds a heartbeat log every 1000 iterations to surface stalls or hangs. It also ensures the loop exits on success. The log is sufficient for observability since the project has no metrics system. The loop does not swallow exceptions — if `db.execute` or `fetchone` raises an exception, it will propagate up (as expected for a background task). The fix does not add metrics or telemetry — it only logs, as required.\n\nNote: The loop does not currently log any errors — if `db.execute` fails, the exception will be raised but not logged. That’s a separate issue (not flagged here), but the main observability risk is the lack of heartbeat. The fix above addresses that.",
+        "attempts": 1
+      },
+      "implement": {
+        "chars": 1266,
+        "text": "### AC-123 · Silent Infinite Loop Without Heartbeat Logging\nStrength: Strong\nFiles: app/rooms.py\n\nProblem:\nThe `_unique_code_for_slug` function contains an infinite `while True` loop that lacks any heartbeat logging or progress signal. Since the project has no metrics system, operators have no way to detect if the loop is stuck due to a database lock, query timeout, or misconfigured slug — especially since the loop does not log any iteration count or state. Without logging, the loop may run indefinitely or silently fail to terminate, leading to resource exhaustion or data inconsistency with no observable failure.\n\nSolution:\nAdd a heartbeat log every 1000 iterations using `logging.warning` to surface stalls or hangs. The log includes the base slug, current suffix, and room ID to aid in debugging. The loop already exits on success, and exceptions from `db.execute` or `fetchone` will propagate — no need to rethrow or add telemetry.\n\nBenefits:\nWith the heartbeat log, operators can detect when the loop is stalled or hanging — for example, if a database is down or a query is slow — and take corrective action. The fix is minimal, uses only available logging, and does not require metrics or telemetry — making it safe to deploy in the current environment.",
+        "attempts": 1,
+        "promptVariant": "oversized-strict-cite"
+      },
+      "outcome": "succeeded",
+      "finishedAt": "2026-10-31T22:34:31.067Z"
+    }
+  ],
+  "localVerdict": "Confident majority APPROVE (votes: 2/3 real)\n\nAPPROVE: The draft correctly identifies a genuine observability issue (infinite loop without heartbeat logging) and proposes a minimal, grounded fix using only the project's existing `logging` primitive, with the proposed code consistent with the flagged block in the grounding source.",
+  "localVotes": [
+    {
+      "verdict": "APPROVE",
+      "response": "APPROVE: The draft correctly identifies a genuine observability issue (infinite loop without heartbeat logging) and proposes a minimal, grounded fix using only the project's existing `logging` primitive, with the proposed code consistent with the flagged block in the grounding source."
+    },
+    {
+      "verdict": "APPROVE",
+      "response": "APPROVE: The draft correctly identifies the infinite loop in `_unique_code_for_slug` (lines 134–140) as lacking observability signals and proposes a minimal, grounded fix using only `logging.warning` every 1000 iterations, consistent with the project's available primitives and the real grounding source."
+    }
+  ],
+  "voteErrors": [],
+  "draftModel": "qwen3-vl:8b-instruct",
+  "implementResponse": "### AC-123 · Silent Infinite Loop Without Heartbeat Logging\nStrength: Strong\nFiles: app/rooms.py\n\nProblem:\nThe `_unique_code_for_slug` function contains an infinite `while True` loop that lacks any heartbeat logging or progress signal. Since the project has no metrics system, operators have no way to detect if the loop is stuck due to a database lock, query timeout, or misconfigured slug — especially since the loop does not log any iteration count or state. Without logging, the loop may run indefinitely or silently fail to terminate, leading to resource exhaustion or data inconsistency with no observable failure.\n\nSolution:\nAdd a heartbeat log every 1000 iterations using `logging.warning` to surface stalls or hangs. The log includes the base slug, current suffix, and room ID to aid in debugging. The loop already exits on success, and exceptions from `db.execute` or `fetchone` will propagate — no need to rethrow or add telemetry.\n\nBenefits:\nWith the heartbeat log, operators can detect when the loop is stalled or hanging — for example, if a database is down or a query is slow — and take corrective action. The fix is minimal, uses only available logging, and does not require metrics or telemetry — making it safe to deploy in the current environment.",
+  "planResponse": "1. GENUINE issue — here's the concrete risk (e.g. a real background-task error swallowed silently) and a proposed fix\n\nThe flagged block is an infinite loop (`while True`) that does not have any explicit heartbeat or health-check signal within the 40-line window. The loop may run indefinitely without any observable progress or failure indication — which is a classic observability hygiene issue. Since the project has no metrics system, there is no way to monitor the loop’s health or detect if it’s stuck. The loop also does not log or throw any error if it fails to find a unique code (e.g., if the database is down or the query fails silently).\n\nThe risk: If the loop runs indefinitely or fails to terminate due to a bug or external condition (e.g., database lock, query timeout, or misconfigured slug), it will be invisible to operators — no logs, no metrics, no alerts. This could lead to silent resource exhaustion or data inconsistency.\n\nProposed fix (using only available primitives — logging):\n\n```python\nimport logging\n\nasync def _unique_code_for_slug(db, base_slug: str, row_id: int, table: str = \"rooms\") -> str:\n    candidate = base_slug\n    suffix = 2\n    while True:\n        row = await (\n            await db.execute(\n                f\"SELECT id FROM {table} WHERE code = ? AND id != ?\", (candidate, row_id)\n            )\n        ).fetchone()\n        if row is None:\n            break  # found unique code\n        suffix += 1\n        candidate = f\"{base_slug}{suffix}\"\n\n        # Add a heartbeat log every 1000 iterations to detect stalls\n        if suffix % 1000 == 0:\n            logging.warning(f\"Generating unique code for slug '{base_slug}' — iteration {suffix} (room_id={row_id})\")\n\n    return candidate\n```\n\nThis fix adds a heartbeat log every 1000 iterations to surface stalls or hangs. It also ensures the loop exits on success. The log is sufficient for observability since the project has no metrics system. The loop does not swallow exceptions — if `db.execute` or `fetchone` raises an exception, it will propagate up (as expected for a background task). The fix does not add metrics or telemetry — it only logs, as required.\n\nNote: The loop does not currently log any errors — if `db.execute` fails, the exception will be raised but not logged. That’s a separate issue (not flagged here), but the main observability risk is the lack of heartbeat. The fix above addresses that.",
+  "reviewedAt": "2026-10-31T22:40:34.012Z",
+  "claimedAt": "2026-10-31T22:29:14.775Z",
+  "compute": {
+    "calls": 5,
+    "promptTokens": 10274,
+    "evalTokens": 1263,
+    "modelMs": 316328,
+    "evalMs": 285920,
+    "costUsd": 0,
+    "byStage": {
+      "plan": {
+        "calls": 1,
+        "promptTokens": 1174,
+        "evalTokens": 543,
+        "modelMs": 149485
+      },
+      "implement": {
+        "calls": 2,
+        "promptTokens": 3396,
+        "evalTokens": 597,
+        "modelMs": 162927
+      },
+      "review-vote": {
+        "calls": 2,
+        "promptTokens": 5704,
+        "evalTokens": 123,
+        "modelMs": 3916
+      }
+    },
+    "byModel": {
+      "qwen3-vl:8b-instruct": {
+        "calls": 3,
+        "promptTokens": 4570,
+        "evalTokens": 1140,
+        "modelMs": 312412
+      },
+      "ornith:35b": {
+        "calls": 2,
+        "promptTokens": 5704,
+        "evalTokens": 123,
+        "modelMs": 3916
+      }
+    },
+    "gpus": [
+      "NVIDIA GeForce RTX 3090"
+    ]
+  }
+}
