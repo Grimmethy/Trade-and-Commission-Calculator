@@ -167,3 +167,26 @@ Log the exception with context including the WebSocket and room ID, then re-rais
 
 Benefits:
 Once fixed, the system gains visibility into WebSocket connection failures through logs, enabling faster debugging and preventing silent data loss or duplicate message delivery. The fix uses only available primitives (`logging`) and does not fabricate metrics or telemetry.
+
+### AC-8 · Trade Calculator Error Swallowed Without Logging
+Strength: Strong
+Files: ui/trade-tab.js
+Snippet:
+```
+    const r = await fetch('/api/plugins/trade-calculator/ensure-started', { method: 'POST' });
+    const j = await r.json().catch(() => ({}));
+    ok = r.ok && j.healthy !== false; why = r.ok ? 'the server did not become healthy in time' : (j.error || r.status);
+  } catch (e) { why = String(e); }
+  if (!ok) {
+    main.innerHTML = `<div style="padding:16px"><strong>Trade calculator did not start</strong><p>${escapeAttr(String(why))}</p><p>Start it by hand: <code>cd /media/model-cache/github/trade-calculator &amp;&amp; ./run.sh</code></p></div>`;
+    return;
+```
+
+Problem:  
+The `try...catch` block in `ui/trade-tab.js` silently swallows errors from the `fetch` call to `/api/plugins/trade-calculator/ensure-started` without logging or rethrowing. This means if the server is unreachable, returns an error, or responds with malformed JSON, the error is lost to the user and cannot be debugged without external logs — because the project has no telemetry system and no other logging mechanism beyond `console.error`.
+
+Solution:  
+Inside the `catch` block, log the error with context using `console.error` and rethrow the error to surface it to higher-level error handlers. This ensures the error is visible to developers and can be handled appropriately by the application’s error boundaries — without fabricating any telemetry or metrics.
+
+Benefits:  
+Once fixed, developers can debug silent failures in the trade calculator startup process by inspecting console logs. Users will also see more actionable error messages, and the system will no longer hide failures behind generic UI text.
