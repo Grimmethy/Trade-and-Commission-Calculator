@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app import rooms as rooms_service
+from app.pinned import load_pinned_links
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -11,7 +12,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request, "home.html", {"private": mode.MODE == "private"})
+    return templates.TemplateResponse(request, "home.html", {"private": mode.MODE == "private", "pinned_links": load_pinned_links()})
 
 
 @router.post("/rooms")

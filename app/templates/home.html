@@ -15,6 +15,14 @@
     <form method="post" action="/rooms">
       <button type="submit">Start a new trade</button>
     </form>
+    {% if pinned_links %}
+    <nav class="pinned-links" aria-label="Pinned links">
+      <h2>Pinned</h2>
+      <ul>
+        {% for link in pinned_links %}<li><a href="{{ link.href }}">{{ link.label }}</a></li>{% endfor %}
+      </ul>
+    </nav>
+    {% endif %}
     {% if private %}
     <p class="history-link"><a href="/history">View past trades</a> &middot; <a href="/commissions">Painting commissions</a> &middot; <a href="/gaps">Catalog gaps</a></p>
     {% endif %}

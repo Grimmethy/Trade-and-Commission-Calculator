@@ -759,3 +759,11 @@ h1, h2 { margin: 0 0 0.5rem; }
 
 /* Public mode: commission sheet is read-only, so owner forms and buttons are hidden */
 body.readonly form, body.readonly .delete-btn, body.readonly .manual-toggle { display: none !important; }
+
+/* Home page: optional pinned links (data/pinned-links.json) */
+.pinned-links { margin: 1.25rem auto 0; max-width: 28rem; text-align: left; }
+.pinned-links h2 { font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; opacity: .65; margin: 0 0 .4rem; }
+.pinned-links ul { list-style: none; margin: 0; padding: 0; }
+.pinned-links li { margin: 0 0 .4rem; }
+.pinned-links a { display: block; padding: .75rem .9rem; min-height: 2.75rem; box-sizing: border-box; border: 1px solid #8884; border-radius: 8px; text-decoration: none; }
+
