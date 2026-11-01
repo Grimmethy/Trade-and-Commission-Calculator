@@ -788,3 +788,15 @@ body.js .verify-save-btn { display: none; }
 .returned-progress { font-weight: 600; margin: .5rem 0; }
 .returned-state { color: #666; }
 .returned-state.is-returned { color: #2e7d32; font-weight: 600; }
+
+/* Commission sheet: add from inventory */
+.inventory-add { position: relative; margin: .75rem 0; }
+.inventory-add-label { display: block; font-weight: 600; margin-bottom: .25rem; }
+.inventory-search-input { width: 100%; box-sizing: border-box; min-height: 2.75rem; font-size: 1rem; }
+.inventory-results { position: absolute; z-index: 6; left: 0; right: 0; margin: .15rem 0 0; padding: 0; list-style: none; background: Canvas; color: CanvasText; border: 1px solid #8886; border-radius: 6px; max-height: 50vh; overflow-y: auto; box-shadow: 0 4px 14px #0003; }
+.inventory-result { padding: .7rem .8rem; min-height: 2.75rem; box-sizing: border-box; border-bottom: 1px solid #8883; cursor: pointer; }
+.inventory-result:hover, .inventory-result:focus { background: #8882; outline: none; }
+.inventory-result.already { opacity: .5; cursor: default; }
+.inventory-message { min-height: 1.2em; margin: .25rem 0 0; font-size: .9rem; }
+.inventory-message.inventory-error { color: #c62828; }
+
