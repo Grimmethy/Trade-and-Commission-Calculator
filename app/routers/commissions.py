@@ -102,10 +102,38 @@ async def delete_commission_item(code: str, item_id: int):
     return RedirectResponse(url=f"/commissions/{code}", status_code=303)
 
 
+async def _side_a_item_or_404(code: str, item_id: int):
+    """The commission and one of ITS side-A items, or 404: an item id from another commission must never be editable here."""
+    commission = await commissions_service.get_commission(code)
+    if commission is None:
+        raise HTTPException(status_code=404, detail="Commission not found")
+    item = next((i for i in commission.items if i.id == item_id and i.side == "A"), None)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found on this commission")
+    return commission
+
+
+def _clean_note(note: str | None) -> str | None:
+    note = (note or "").strip()[:500]
+    return note or None
+
+
 @router.post("/commissions/{code}/items/{item_id}/verify")
 async def verify_commission_item(code: str, item_id: int, verified: bool = Form(False), note: str = Form(None)):
-    await commissions_service.set_item_verification(item_id, verified, note)
+    await _side_a_item_or_404(code, item_id)
+    await commissions_service.set_item_verification(item_id, verified, _clean_note(note))
     return RedirectResponse(url=f"/commissions/{code}", status_code=303)
+
+
+@router.post("/commissions/{code}/items/{item_id}/verify.json")
+async def verify_commission_item_json(code: str, item_id: int, verified: bool = Form(False), note: str = Form(None)):
+    """Instant save for the checkbox and the note box: no redirect, returns the new progress count."""
+    await _side_a_item_or_404(code, item_id)
+    await commissions_service.set_item_verification(item_id, verified, _clean_note(note))
+    commission = await commissions_service.get_commission(code)
+    side_a = [i for i in commission.items if i.side == "A"]
+    return {"ok": True, "verified": bool(verified), "note": _clean_note(note) or "",
+            "returned_count": sum(1 for i in side_a if i.verified), "total": len(side_a), "status": commission.status}
 
 
 @router.post("/commissions/{code}/status")

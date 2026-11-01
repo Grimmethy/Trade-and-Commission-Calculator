@@ -113,4 +113,59 @@
   }
 
   wireRename();
+
+  // Returned checkbox + note save instantly (no Save button, no reload). The forms stay in the markup as the
+  // no-JavaScript fallback; the Save button is hidden once this script runs (body.js).
+  function wireVerify() {
+    document.body.classList.add("js");
+    const code = document.body.dataset.commissionCode;
+    const countEl = document.getElementById("returned-count");
+    const totalEl = document.getElementById("returned-total");
+    const markForm = document.getElementById("mark-returned-form");
+
+    function showStatus(form, text, bad) {
+      const el = form.querySelector(".verify-status");
+      if (!el) return;
+      el.textContent = text;
+      el.classList.toggle("verify-failed", !!bad);
+      if (!bad) setTimeout(() => { if (el.textContent === text) el.textContent = ""; }, 1500);
+    }
+
+    async function save(form) {
+      const itemId = form.dataset.itemId;
+      const body = new URLSearchParams();
+      const box = form.querySelector("input[type=checkbox]");
+      if (box.checked) body.set("verified", "true");
+      body.set("note", form.querySelector(".verify-note-input").value);
+      showStatus(form, "Saving…");
+      try {
+        const res = await fetch(`/commissions/${code}/items/${itemId}/verify.json`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+          keepalive: true,
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        countEl.textContent = data.returned_count;
+        totalEl.textContent = data.total;
+        if (markForm) markForm.hidden = !(data.total > 0 && data.returned_count === data.total && data.status === "submitted");
+        showStatus(form, "Saved");
+      } catch (err) {
+        showStatus(form, "Could not save, tap to retry", true);
+      }
+    }
+
+    document.querySelectorAll(".verify-item-form").forEach((form) => {
+      form.addEventListener("submit", (event) => { event.preventDefault(); save(form); });
+      form.querySelector("input[type=checkbox]").addEventListener("change", () => save(form));
+      const note = form.querySelector(".verify-note-input");
+      let lastNote = note.value;
+      note.addEventListener("change", () => { if (note.value !== lastNote) { lastNote = note.value; save(form); } });
+      note.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); note.blur(); } });
+      form.querySelector(".verify-status").addEventListener("click", () => save(form));
+    });
+  }
+
+  wireVerify();
 })();
