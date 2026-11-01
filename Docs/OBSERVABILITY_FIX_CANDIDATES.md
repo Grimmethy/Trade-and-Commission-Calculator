@@ -91,3 +91,33 @@ Add `console.error("Commission rename failed:", err)` inside the `catch` block t
 
 Benefits:  
 Developers can now debug rename failures by checking browser console logs. The error is no longer silently swallowed, enabling faster diagnosis and reducing time to fix production issues.
+
+### AC-5 · Silent Fetch Error Without Logging or User Feedback
+Strength: Strong
+Files: app/static/stock.js
+Snippet:
+```
+      timer = setTimeout(async () => {
+        let data;
+        try { const r = await fetch("/api/inventory/items?limit=8&q=" + encodeURIComponent(q)); data = r.ok ? await r.json() : { items: [] }; }
+        catch (e) { data = { items: [] }; }
+        list.innerHTML = "";
+        if (!data.items.length) { list.innerHTML = "<li>No matching stock (is the inventory tab running?)</li>"; list.hidden = false; return; }
+        data.items.forEach((it) => {
+```
+
+Problem:
+The `fetch` call in `stock.js` silently swallows any error (network, server, CORS, etc.) by assigning an empty array to `data`, with no logging or rethrowing. The UI then shows “No matching stock” only when `data.items.length === 0`, which is distinct from a fetch failure — so users see no indication of why the data is missing. Without logs, debugging is impossible, and the system remains opaque to failures that could be widespread.
+
+Solution:
+Replace the `catch (e) { data = { items: [] }; }` block with:
+```javascript
+catch (e) {
+  console.error("Failed to fetch stock data for query:", q, "Error:", e);
+  data = { items: [] };
+}
+```
+This logs the error with the query and error object so it can be traced during debugging. The error is still suppressed — which is acceptable given the UI’s current behavior — but developers now have visibility into why fetches fail.
+
+Benefits:
+Once fixed, errors that previously went unseen (e.g., server down, CORS blocked, network timeout) will appear in console logs, enabling faster debugging. The UI remains unchanged, but the system’s observability is restored — allowing teams to detect and resolve silent failures without user complaints or repeated failed attempts.
