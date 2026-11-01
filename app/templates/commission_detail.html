@@ -101,6 +101,14 @@
           </li>
           {% endfor %}
         </ul>
+        {% if private %}
+        <div class="inventory-add">
+          <label class="inventory-add-label" for="inventory-search">Add from inventory</label>
+          <input type="search" id="inventory-search" class="inventory-search-input" placeholder="Type part of a code or name, e.g. KAC03 or trajann" autocomplete="off" />
+          <ul class="inventory-results" hidden></ul>
+          <p class="inventory-message" aria-live="polite"></p>
+        </div>
+        {% endif %}
         <form method="post" action="/commissions/{{ commission.code }}/items" class="add-item-form commission-add-item-form" data-side="A">
           <input type="hidden" name="side" value="A" />
           <div class="catalog-search">

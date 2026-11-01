@@ -168,4 +168,99 @@
   }
 
   wireVerify();
+
+  // Add from inventory: type part of a code or name, pick a result, it is added at once (priced by the server from the
+  // inventory: MSRP, else the listed price) and the page reloads with the scroll position kept and the box focused again.
+  function wireInventory() {
+    const box = document.querySelector(".inventory-add");
+    if (!box) return;
+    const input = box.querySelector(".inventory-search-input");
+    const list = box.querySelector(".inventory-results");
+    const msg = box.querySelector(".inventory-message");
+    const code = document.body.dataset.commissionCode;
+    const onSheet = new Set([...document.querySelectorAll('.side[data-side="A"] .commission-item-row .item-name')]
+      .map((el) => el.textContent.trim().split(/\s+/)[0].toUpperCase()));
+
+    function priceOf(it) {
+      if (it.msrp) return { text: money(it.msrp) + " MSRP", ok: true };
+      const m = /\$([0-9]+(?:\.[0-9]{1,2})?)/.exec(it.listed_on || "");
+      return m ? { text: money(m[1]) + " listed", ok: true } : { text: "no price", ok: false };
+    }
+
+    function say(text, bad) {
+      msg.textContent = text || "";
+      msg.classList.toggle("inventory-error", !!bad);
+    }
+
+    async function add(itemCode) {
+      say(`Adding ${itemCode}…`);
+      try {
+        const res = await fetch(`/commissions/${code}/items/by-inventory`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ inventory_code: itemCode }),
+        });
+        if (!res.ok) {
+          let why = `Could not add ${itemCode} (${res.status})`;
+          try { why = (await res.json()).detail || why; } catch { /* keep the generic text */ }
+          say(why, true);
+          return;
+        }
+        sessionStorage.setItem("inventoryRefocus", String(window.scrollY));
+        window.location.reload();
+      } catch {
+        say("Could not reach the server. Try again.", true);
+      }
+    }
+
+    function render(items) {
+      list.innerHTML = "";
+      for (const it of items) {
+        const p = priceOf(it);
+        const added = onSheet.has(it.code.toUpperCase());
+        const li = document.createElement("li");
+        li.className = "inventory-result" + (added ? " already" : "");
+        li.tabIndex = 0;
+        const codeEl = document.createElement("strong");
+        codeEl.textContent = it.code;
+        li.append(codeEl, ` ${it.name} · ${it.grade} · ${p.text}${it.status === "listed" ? " · listed" : ""}${it.owner === "JWC" ? " · JWC" : ""}`);
+        if (added) li.append(" · already added");
+        const pick = () => { if (added) { say(`${it.code} is already on this commission`, true); return; } if (!p.ok) { say(`${it.code} has no MSRP or listed price: add it by hand with a price`, true); return; } add(it.code); };
+        li.addEventListener("click", pick);
+        li.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); pick(); } });
+        list.appendChild(li);
+      }
+      list.hidden = items.length === 0;
+      if (!items.length) say("No match on the shelf.");
+    }
+
+    async function search(q) {
+      if (q.length < 2) { list.hidden = true; list.innerHTML = ""; say(""); return; }
+      say("");
+      try {
+        const res = await fetch(`/api/inventory/items?status=any&limit=12&q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error(String(res.status));
+        render((await res.json()).items);
+      } catch {
+        list.hidden = true;
+        say("The inventory did not answer. Is the inventory tab running?", true);
+      }
+    }
+
+    input.addEventListener("input", debounce(() => search(input.value.trim()), 200));
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") { list.hidden = true; }
+      if (event.key === "Enter") { event.preventDefault(); const first = list.querySelector(".inventory-result:not(.already)"); if (first) first.click(); }
+    });
+    document.addEventListener("click", (event) => { if (!box.contains(event.target)) list.hidden = true; });
+
+    const y = sessionStorage.getItem("inventoryRefocus");
+    if (y !== null) {
+      sessionStorage.removeItem("inventoryRefocus");
+      window.scrollTo(0, Number(y));
+      input.focus({ preventScroll: true });
+    }
+  }
+
+  wireInventory();
 })();
