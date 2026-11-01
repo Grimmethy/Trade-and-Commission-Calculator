@@ -12,6 +12,8 @@
   const itemsBEl = document.getElementById("items-b");
   const labelAEl = document.getElementById("label-a");
   const labelBEl = document.getElementById("label-b");
+  let lastLabelA = labelAEl.textContent.trim();
+  let lastLabelB = labelBEl.textContent.trim();
   const cashAEl = document.getElementById("cash-a");
   const cashBEl = document.getElementById("cash-b");
   const venueSelect = document.getElementById("venue-select");
@@ -98,6 +100,8 @@
       balanceEl.textContent = `${sideLabel} should add ${money(state.totals.suggested_topup_amount)} cash to balance`;
     }
 
+    lastLabelA = state.room.label_a;   // what the server holds; the blur handlers compare against these
+    lastLabelB = state.room.label_b;
     if (document.activeElement !== labelAEl) labelAEl.textContent = state.room.label_a;
     if (document.activeElement !== labelBEl) labelBEl.textContent = state.room.label_b;
     if (document.activeElement !== cashAEl) cashAEl.value = state.room.cash_a;
@@ -586,11 +590,18 @@
     }
   });
 
+  // Only send a rename when the text really changed: merely tabbing through a heading fires blur too.
   labelAEl.addEventListener("blur", () => {
-    send("rename_side", { side: "A", label: labelAEl.textContent.trim() || "Side A" });
+    const label = labelAEl.textContent.trim() || "Side A";
+    if (label === lastLabelA) return;
+    lastLabelA = label;
+    send("rename_side", { side: "A", label });
   });
   labelBEl.addEventListener("blur", () => {
-    send("rename_side", { side: "B", label: labelBEl.textContent.trim() || "Side B" });
+    const label = labelBEl.textContent.trim() || "Side B";
+    if (label === lastLabelB) return;
+    lastLabelB = label;
+    send("rename_side", { side: "B", label });
   });
 
   venueSelect.addEventListener("change", () => {

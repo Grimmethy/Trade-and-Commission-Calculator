@@ -6,6 +6,7 @@ from app.db import get_db, update_row as _update_row
 from app.models import Item, Room
 
 ALPHABET = string.ascii_lowercase + string.digits
+RESERVED_ROOM_CODES = ("side-a", "side-b")     # obvious defaults: a trade must never sit at a guessable address
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
@@ -144,17 +145,11 @@ async def _unique_code_for_slug(db, base_slug: str, row_id: int, table: str = "r
 
 
 async def rename_side(room_id: int, side: str, label: str) -> None:
-    """Renaming Side B also renames the room's actual code/URL to match
-    (slugified, collision-suffixed) — Side A's name never affects the code."""
+    """Rename one side's heading. This NEVER changes the room code (the URL): a room's
+    address is its only privacy, and it changes only through the explicit
+    rename_room_code below."""
     column = "label_a" if side == "A" else "label_b"
-    fields = {column: label}
-
-    if side == "B":
-        base_slug = slugify(label)
-        if base_slug:
-            fields["code"] = await _unique_code_for_slug(get_db(), base_slug, room_id)
-
-    await _update_row("rooms", room_id, fields, touch_updated_at=True)
+    await _update_row("rooms", room_id, {column: label}, touch_updated_at=True)
 
 
 async def rename_room_code(room_id: int, new_name: str) -> str | None:
@@ -162,7 +157,7 @@ async def rename_room_code(room_id: int, new_name: str) -> str | None:
     Returns the actual new code (collision-suffixed if needed), or None if
     the given name slugifies to nothing usable."""
     base_slug = slugify(new_name)
-    if not base_slug:
+    if not base_slug or base_slug in RESERVED_ROOM_CODES:
         return None
     new_code = await _unique_code_for_slug(get_db(), base_slug, room_id)
     await _update_row("rooms", room_id, {"code": new_code}, touch_updated_at=True)
