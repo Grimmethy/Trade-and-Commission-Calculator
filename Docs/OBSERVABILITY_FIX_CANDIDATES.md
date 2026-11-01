@@ -45,3 +45,26 @@ Log all exceptions using `logging.error()` with context (room_id, msg_type, payl
 
 Benefits:
 Operators can now detect and debug silent failures in message handling by reviewing logs. The system’s health becomes observable through logs, even without metrics. The fix uses only stdlib logging — no new dependencies or telemetry systems required — and preserves the existing user-facing error behavior.
+
+### AC-3 · Silent Error Swallowing in WebSocket Message Handling
+Strength: Strong
+Files: app/routers/ws.py
+Snippet:
+```
+                await _broadcast_state(room_id)
+            except ValueError as exc:
+                await manager.send_to(websocket, {"type": "error", "payload": {"message": str(exc)}})
+    except WebSocketDisconnect:
+        manager.disconnect(room_id, websocket)
+
+
+```
+
+Problem:
+The `try/except` block around `_handle_message` catches `ValueError` but only sends an error message to the client via `manager.send_to(...)`. It does not log the error or re-raise it, meaning the error is silently swallowed from an observability perspective. Since the project has no metrics system, there is no telemetry to surface the error. Without logging, operators cannot trace or diagnose why a client received an error — especially if the error is due to a room no longer existing — making the system opaque to human operators.
+
+Solution:
+Add a logging statement inside the `except ValueError as exc:` block using the stdlib `logging` module. Log the error with context including `room_id` and `msg_type` to enable traceability. Since the project has no metrics, no telemetry is added. The fix does not re-raise the exception because this is a background WebSocket handler and re-raising would not be appropriate unless the caller expects it — which it does not.
+
+Benefits:
+Once fixed, the error will appear in logs with sufficient context to identify the source (room_id, message type) and reason (ValueError), enabling operators to diagnose and respond to client-facing errors without relying on client-side feedback. This closes the observability gap without introducing metrics or telemetry that the project does not support.
