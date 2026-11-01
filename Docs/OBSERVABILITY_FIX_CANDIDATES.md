@@ -121,3 +121,26 @@ This logs the error with the query and error object so it can be traced during d
 
 Benefits:
 Once fixed, errors that previously went unseen (e.g., server down, CORS blocked, network timeout) will appear in console logs, enabling faster debugging. The UI remains unchanged, but the system’s observability is restored — allowing teams to detect and resolve silent failures without user complaints or repeated failed attempts.
+
+### AC-6 · Silent Error Swallowing in Trade Room Rename
+Strength: Strong
+Files: app/static/trade.js
+Snippet:
+```
+      roomCodeEl.textContent = newCode;
+      document.title = `Trade Calculator — Room ${newCode}`;
+      history.replaceState(null, "", `/trade/${newCode}`);
+    } catch {
+      roomCodeEl.textContent = currentCode;
+      roomCodeEl.classList.add("rename-failed");
+      setTimeout(() => roomCodeEl.classList.remove("rename-failed"), 1500);
+```
+
+Problem:
+The `catch` block in the rename operation silently swallows any error from the fetch (network failure, server error, etc.) and only shows a generic UI state ("rename-failed") without logging or preserving the error for debugging. Since the project has no metrics or telemetry system, there’s no way to alert or monitor failures — but logging the error to `console.error` is the only available observability primitive. Without this, operators cannot diagnose why renames fail, and users experience unexplained UI states.
+
+Solution:
+Replace the empty `catch` block with one that logs the error to `console.error` with context (operation, URL, error message), then rethrows to preserve the stack trace for the caller. This uses only `console.error` (available) and rethrowing (safe in async context).
+
+Benefits:
+Operators can now debug rename failures by checking console logs, and users won’t be left with unexplained UI states without any diagnostic trail — even without metrics, observability is restored via logging.
