@@ -68,3 +68,26 @@ Add a logging statement inside the `except ValueError as exc:` block using the s
 
 Benefits:
 Once fixed, the error will appear in logs with sufficient context to identify the source (room_id, message type) and reason (ValueError), enabling operators to diagnose and respond to client-facing errors without relying on client-side feedback. This closes the observability gap without introducing metrics or telemetry that the project does not support.
+
+### AC-4 · Fix Silent Error Swallowing in Commission Rename
+Strength: Strong
+Files: app/static/commission.js
+Snippet:
+```
+        // at once, unlike the trade room page where every action goes through one
+        // websocket keyed by room id, not room code.
+        window.location.href = `/commissions/${newCode}`;
+      } catch {
+        codeEl.textContent = currentCode;
+        codeEl.classList.add("rename-failed");
+        setTimeout(() => codeEl.classList.remove("rename-failed"), 1500);
+```
+
+Problem:  
+The `catch` block around `window.location.href = `/commissions/${newCode}`` silently swallows any error — including network failures, invalid server responses, or DOM manipulation issues — without logging or surfacing it. The UI shows “rename-failed” but no developer or user can diagnose why. Since the project has no metrics system, logging via `console.error` is the only viable observability path — and it’s absent here.
+
+Solution:  
+Add `console.error("Commission rename failed:", err)` inside the `catch` block to log the error with context, and rethrow to preserve the error for any higher-level handling (though none exists here — logging is sufficient). The UI state remains unchanged, so no user experience disruption.
+
+Benefits:  
+Developers can now debug rename failures by checking browser console logs. The error is no longer silently swallowed, enabling faster diagnosis and reducing time to fix production issues.
