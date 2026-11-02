@@ -190,3 +190,26 @@ Inside the `catch` block, log the error with context using `console.error` and r
 
 Benefits:  
 Once fixed, developers can debug silent failures in the trade calculator startup process by inspecting console logs. Users will also see more actionable error messages, and the system will no longer hide failures behind generic UI text.
+
+### AC-9 · Add Heartbeat and Guardrail to Long-Running Slug Uniqueness Loop
+Strength: Strong
+Files: app/rooms.py
+Snippet:
+```
+async def _unique_code_for_slug(db, base_slug: str, row_id: int, table: str = "rooms") -> str:
+    candidate = base_slug
+    suffix = 2
+    while True:
+        row = await (
+            await db.execute(
+                f"SELECT id FROM {table} WHERE code = ? AND id != ?", (candidate, row_id)
+```
+
+Problem:
+The loop in `_unique_code_for_slug` runs indefinitely until `row is None`, which may never occur due to database collisions or silent query failures. There is no heartbeat, no iteration limit, and no logging to indicate progress or failure — making it unobservable. Without any telemetry or logging (as per project capabilities), the loop could run forever without detection, silently consuming resources and hiding real failures.
+
+Solution:
+Add a heartbeat log every 1000 iterations and a hard limit of 10,000 iterations to prevent infinite loops. Log every heartbeat with `logging.warning` and raise a `RuntimeError` if the limit is exceeded, logging the slug and table for context. This uses only `logging`, which the project supports, and does not add metrics or telemetry.
+
+Benefits:
+Once fixed, the loop becomes observable: it logs progress every 1000 iterations and will crash with a clear error message if it runs too long — preventing silent hangs and enabling debugging. The fix is minimal, safe, and matches project capabilities.
