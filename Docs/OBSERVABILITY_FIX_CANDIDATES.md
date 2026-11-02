@@ -259,3 +259,34 @@ In the `catch` block, log the error with context using `console.error("Search AP
 
 Benefits:  
 Once fixed, operators can diagnose API failures by checking console logs for HTTP status and response body. The error is no longer silently swallowed, and the user-facing message remains — but now it’s accompanied by real diagnostic data. This improves observability without requiring metrics or telemetry.
+
+### AC-12 · Fix Fetch Error Swallowing in commission.js
+Strength: Strong
+Files: app/static/commission.js
+Snippet:
+```
+        }
+        sessionStorage.setItem("inventoryRefocus", String(window.scrollY));
+        window.location.reload();
+      } catch {
+        say("Could not reach the server. Try again.", true);
+      }
+    }
+```
+
+Problem:
+The `catch` block in `app/static/commission.js` at line 211 silently swallows any error thrown during the `fetch` operation and only logs a generic message via `say("Could not reach the server. Try again.", true);`. This is a genuine issue because: the error is not logged to any system (no telemetry, no structured logging — the project has no metrics or third-party logging), the error is not rethrown — so if a caller expects to handle the failure (e.g., retry, show a more specific error, or alert the user), it is completely invisible, and the error may originate from network failure, server misconfiguration, or malformed response — and without surfacing it, the user gets no actionable feedback.
+
+Solution:
+Replace the empty `catch` block with one that logs the error to `console.error` with context and rethrows it to allow caller handling:
+
+```js
+} catch (err) {
+  console.error("Fetch error in addInventoryItem:", err);
+  say("Could not reach the server. Try again.", true);
+  throw err;
+}
+```
+
+Benefits:
+This ensures the error is visible to developers via console logs (the only available logging primitive) and allows callers to handle or propagate the error appropriately — enabling retries, user feedback, or debugging without fabricating telemetry or metrics that the project lacks. The user-facing message remains unchanged, but now the error is also surfaced for debugging and recovery.
