@@ -213,3 +213,26 @@ Add a heartbeat log every 1000 iterations and a hard limit of 10,000 iterations 
 
 Benefits:
 Once fixed, the loop becomes observable: it logs progress every 1000 iterations and will crash with a clear error message if it runs too long — preventing silent hangs and enabling debugging. The fix is minimal, safe, and matches project capabilities.
+
+### AC-10 · Silent Error Swallowing in Commission Save
+Strength: Strong
+Files: app/static/commission.js
+Snippet:
+```
+        totalEl.textContent = data.total;
+        if (markForm) markForm.hidden = !(data.total > 0 && data.returned_count === data.total && data.status === "submitted");
+        showStatus(form, "Saved");
+      } catch (err) {
+        showStatus(form, "Could not save, tap to retry", true);
+      }
+    }
+```
+
+Problem:  
+The `catch` block in the `save` function silently swallows the error thrown when the server returns a non-2xx status (e.g., 500), without logging the actual error (status, response body, or stack trace). The user sees a generic “Could not save, tap to retry” message, but no observability exists to debug why the save failed — whether it’s a server crash, API change, or network issue. Since the project has no metrics or third-party logging, the error is completely invisible to operators.
+
+Solution:  
+Log the error with sufficient context using `console.error`, preserving the original error object and its message. The user message remains unchanged. Optionally, rethrow the error to allow the caller to handle it if needed — but since no telemetry exists, logging to `console.error` is sufficient to satisfy observability hygiene.
+
+Benefits:  
+Once fixed, operators can debug save failures by inspecting console logs during production incidents. The error’s root cause (e.g., HTTP 500, malformed response) becomes visible, enabling faster resolution of outages or regressions — without requiring metrics or telemetry infrastructure.
