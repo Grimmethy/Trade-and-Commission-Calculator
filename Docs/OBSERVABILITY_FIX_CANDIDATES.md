@@ -290,3 +290,37 @@ Replace the empty `catch` block with one that logs the error to `console.error` 
 
 Benefits:
 This ensures the error is visible to developers via console logs (the only available logging primitive) and allows callers to handle or propagate the error appropriately — enabling retries, user feedback, or debugging without fabricating telemetry or metrics that the project lacks. The user-facing message remains unchanged, but now the error is also surfaced for debugging and recovery.
+
+### AC-13 · Silent Error Swallowing in Room Rename Operation
+Strength: Strong
+Files: app/static/trade.js
+Snippet:
+```
+      roomCodeEl.textContent = newCode;
+      document.title = `Trade Calculator — Room ${newCode}`;
+      history.replaceState(null, "", `/trade/${newCode}`);
+    } catch {
+      roomCodeEl.textContent = currentCode;
+      roomCodeEl.classList.add("rename-failed");
+      setTimeout(() => roomCodeEl.classList.remove("rename-failed"), 1500);
+```
+
+Problem:
+The `catch` block silently swallows any error during the `fetch` operation — including network failures, server errors, or invalid responses — without logging, rethrowing, or emitting any telemetry. The UI updates to show a “rename-failed” state, but developers and users have no visibility into the root cause. This creates a silent failure that could mask real bugs (e.g., user thinks rename succeeded when it didn’t, or vice versa) and prevents debugging without console inspection.
+
+Solution:
+Log the error to `console.error` with context, and rethrow to surface it to the caller (if appropriate). Since the project has no metrics system, logging is the only available observability primitive. Replace the empty `catch` block with:
+
+```js
+} catch (err) {
+  console.error("Rename operation failed:", err);
+  roomCodeEl.textContent = currentCode;
+  roomCodeEl.classList.add("rename-failed");
+  setTimeout(() => roomCodeEl.classList.remove("rename-failed"), 1500);
+  // Optionally rethrow if caller might need to handle it
+  // throw err; // Uncomment if caller expects to handle it
+}
+```
+
+Benefits:
+Once fixed, developers can immediately see the root cause of rename failures via console logs during user interactions. This prevents silent failures from going unnoticed, improves debugging speed, and ensures users are not misled by UI states without context — all while using only available primitives (`console.error`).
