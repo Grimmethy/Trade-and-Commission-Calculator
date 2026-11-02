@@ -236,3 +236,26 @@ Log the error with sufficient context using `console.error`, preserving the orig
 
 Benefits:  
 Once fixed, operators can debug save failures by inspecting console logs during production incidents. The error’s root cause (e.g., HTTP 500, malformed response) becomes visible, enabling faster resolution of outages or regressions — without requiring metrics or telemetry infrastructure.
+
+### AC-11 · Fix Silent Error Swallowing in Search API
+Strength: Strong
+Files: app/static/commission.js
+Snippet:
+```
+        const res = await fetch(`/api/inventory/items?status=any&limit=12&q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error(String(res.status));
+        render((await res.json()).items);
+      } catch {
+        list.hidden = true;
+        say("The inventory did not answer. Is the inventory tab running?", true);
+      }
+```
+
+Problem:  
+The `catch` block in `search(q)` silently swallows any error from the fetch without logging or rethrowing. It renders a vague user message — “The inventory did not answer. Is the inventory tab running?” — but does not surface the HTTP status or response body. Without logging, operators or developers cannot diagnose why the API failed — especially since this is a critical path for user input. The project has no metrics system, so logging must use `console.error`.
+
+Solution:  
+In the `catch` block, log the error with context using `console.error("Search API failed:", err.message || err)`, then rethrow the error to surface it to the caller. This ensures the error is observable and can be handled by higher-level code (e.g., event handlers or UI layers).
+
+Benefits:  
+Once fixed, operators can diagnose API failures by checking console logs for HTTP status and response body. The error is no longer silently swallowed, and the user-facing message remains — but now it’s accompanied by real diagnostic data. This improves observability without requiring metrics or telemetry.
