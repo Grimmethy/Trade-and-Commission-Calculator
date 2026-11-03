@@ -68,3 +68,26 @@ Replace the synchronous loop with `asyncio.gather(*[ws.send_text(payload) for ws
 
 Benefits:
 After the fix, the system will send messages to all connected clients in parallel, dramatically reducing end-to-end latency for large rooms. The fix is zero-cost in terms of dependencies or complexity — it uses only standard library primitives already in use, and preserves all existing behavior (including error handling, since `asyncio.gather` will propagate exceptions).
+
+### AC-4 · Parallelize Schema ALTERs After Sequential PRAGMA Checks
+Strength: Strong
+Files: app/db.py
+Snippet:
+```
+        ("rooms", "commission_base", "REAL NOT NULL DEFAULT 0"),
+        ("rooms", "commission_flat_amount", "REAL NOT NULL DEFAULT 0"),
+    ]
+    for table, column, ddl in migrations:
+        existing = await (await _db.execute(f"PRAGMA table_info({table})")).fetchall()
+        if column not in {row["name"] for row in existing}:
+            await _db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+```
+
+Problem:
+The current loop executes each PRAGMA query and subsequent ALTER sequentially, blocking the event loop for each database round-trip. Since PRAGMA queries are schema reads and must be ordered to avoid inconsistent state (e.g., if one ALTER is in progress), they remain sequential — but the ALTERs themselves are schema modifications that are idempotent and can be run concurrently without risk of data corruption. This results in a serial performance bottleneck: if there are 10 migrations, the total time is the sum of 10 individual query latencies, not the minimum possible.
+
+Solution:
+After collecting the schema state via sequential PRAGMA queries, run all ALTERs concurrently using asyncio.gather. This preserves correctness by ensuring schema state is fully verified before parallel execution, while eliminating the serial I/O cost of the ALTERs. The fix requires no new dependencies and only reorders and parallelizes existing async calls.
+
+Benefits:
+The total execution time for schema alterations drops from O(n) serial I/O to O(1) parallel I/O (minus the initial sequential PRAGMA phase), significantly reducing latency during schema migrations — especially on systems with slow disk I/O or under heavy load. This change is safe and performance-critical without introducing new complexity.
