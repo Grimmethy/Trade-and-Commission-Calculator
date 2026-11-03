@@ -45,3 +45,26 @@ Replace the sequential loop with `asyncio.gather` to run all database inserts co
 
 Benefits:
 The total time to seed the catalog will be reduced to the duration of the slowest insert (instead of summing all insert times). This improves startup latency and reduces resource contention during catalog initialization, making the system more responsive for users.
+
+### AC-3 · Concurrent WebSocket Sends
+Strength: Strong
+Files: app/websocket_manager.py
+Snippet:
+```
+        sockets = self._rooms.get(room_id, set())
+        payload = json.dumps(message)
+        dead = []
+        for ws in sockets:
+            try:
+                await ws.send_text(payload)
+            except Exception:
+```
+
+Problem:
+The current loop iterates over `sockets` and calls `await ws.send_text(payload)` synchronously for each connection. This serializes all sends, causing total latency to scale linearly with the number of clients (O(n)), even though the underlying I/O is async. With 100+ clients, this creates a bottleneck where each send blocks until the prior one completes — unnecessarily delaying the entire batch and wasting CPU time waiting for network I/O.
+
+Solution:
+Replace the synchronous loop with `asyncio.gather(*[ws.send_text(payload) for ws in sockets])` to send to all sockets concurrently. This parallelizes the I/O operations using the existing `asyncio` primitives, reducing total latency to near O(1) (assuming network is the bottleneck) and eliminating per-iteration blocking.
+
+Benefits:
+After the fix, the system will send messages to all connected clients in parallel, dramatically reducing end-to-end latency for large rooms. The fix is zero-cost in terms of dependencies or complexity — it uses only standard library primitives already in use, and preserves all existing behavior (including error handling, since `asyncio.gather` will propagate exceptions).
