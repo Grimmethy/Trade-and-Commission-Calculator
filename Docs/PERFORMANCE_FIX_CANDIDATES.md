@@ -91,3 +91,26 @@ After collecting the schema state via sequential PRAGMA queries, run all ALTERs 
 
 Benefits:
 The total execution time for schema alterations drops from O(n) serial I/O to O(1) parallel I/O (minus the initial sequential PRAGMA phase), significantly reducing latency during schema migrations — especially on systems with slow disk I/O or under heavy load. This change is safe and performance-critical without introducing new complexity.
+
+### AC-5 · Parallelize Database Inserts to Avoid Serialization
+Strength: Strong
+Files: app/rooms.py
+Snippet:
+```
+
+async def create_room() -> Room:
+    db = get_db()
+    for _ in range(10):
+        code = "".join(secrets.choice(ALPHABET) for _ in range(5))
+        try:
+            cursor = await db.execute(
+```
+
+Problem:  
+The current implementation serializes 10 independent database inserts by awaiting each `db.execute(...)` call sequentially inside a loop. Even if each call is lightweight, the sequential nature forces each operation to wait for the prior one to complete — introducing unnecessary latency and reducing throughput, especially if the underlying `db.execute` involves blocking I/O (e.g., network round-trip or synchronous DB call under async wrapper). This is not just a theoretical bottleneck — it’s a measurable performance cost in real execution.
+
+Solution:  
+Replace the loop with `asyncio.gather` to schedule all 10 database operations concurrently. Since the project already uses `asyncio` (implied by `await`), this is a minimal, zero-dependency fix. Instead of awaiting each `db.execute(...)` in sequence, collect all awaitable tasks in a list and await them all at once using `await asyncio.gather(*tasks)`. This ensures the 10 operations run in parallel, not serial, without changing any logic or data flow.
+
+Benefits:  
+Once fixed, the 10 database inserts will execute concurrently, reducing the total latency from potentially 10x the time of one insert to roughly the time of one insert (plus network or DB round-trip overhead). This improves throughput, especially under load, and eliminates the serialization cost that currently blocks performance. The fix is safe, minimal, and fully compatible with existing code.
