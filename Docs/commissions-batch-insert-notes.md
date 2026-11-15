@@ -74,3 +74,19 @@ Finding: no transaction wrapper is present. The INSERT at `app/commissions.py:14
 ### Commissions schema (`app/db.py` near line 51)
 
 Finding: only `code` is `UNIQUE`. The table is `commissions` with `code TEXT UNIQUE NOT NULL`, and the other columns are `id`, `painter_name`, `status`, `commission_rate`, `cash_amount`, `created_at`, and `updated_at`. There is no `(painter_name, code)` composite UNIQUE constraint.
+
+---
+
+## 2026-11-15 · HUB0004 3/3 · Closing status
+
+**Status: not actionable.**
+
+The finding assumed a 10-row batch insert in `create_commission`. That premise does not match the code at `app/commissions.py:8-20`:
+
+- The `for _ in range(10)` loop is a retry loop for generating a unique 5-character `code`. It is not a batch insert.
+- Each iteration runs one single-row `INSERT INTO commissions (code, painter_name) VALUES (?, ?)`, then `await db.commit()`. On success it returns immediately, so at most one row is inserted per call.
+- A `UNIQUE` collision causes the next attempt to retry with a new code. The failed INSERT wrote no row, so there is no partial-batch state to be left inconsistent.
+- The caller grep (1/3) found a single call site, `app/routers/commissions.py:23`, which makes a single-row call. No batch caller exists.
+- The transaction and schema check (2/3) found no explicit transaction wrapper, and only `code` is `UNIQUE`. With one INSERT per commit, no multi-row transactional inconsistency is possible.
+
+No code change is made. `app/commissions.py:8-20` is left unchanged.
