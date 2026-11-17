@@ -198,6 +198,14 @@ async def set_commission(
     await _update_row("rooms", room_id, fields, touch_updated_at=True)
 
 
+def _validate_qty(value):
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f'qty must be an int, got {type(value).__name__}')
+    if value < 0:
+        raise ValueError(f'qty must be >= 0, got {value}')
+    return value
+
+
 async def add_item(
     room_id: int,
     side: str,
@@ -210,6 +218,7 @@ async def add_item(
     models_per_box: int | None = None,
     condition: str = "assembled",
 ) -> int:
+    _validate_qty(qty)
     db = get_db()
     cursor = await db.execute(
         """
@@ -240,7 +249,7 @@ async def edit_item(
 ) -> None:
     fields = {}
     if qty is not None:
-        fields["qty"] = qty
+        fields["qty"] = _validate_qty(qty)
     if unit_price is not None:
         fields["unit_price"] = unit_price
     if name is not None:
