@@ -3,7 +3,10 @@ import secrets
 import string
 
 from app.db import get_db, update_row as _update_row
+from decimal import Decimal
+
 from app.models import Item, Room
+from app.pricing import line_total
 
 ALPHABET = string.ascii_lowercase + string.digits
 RESERVED_ROOM_CODES = ("side-a", "side-b")     # obvious defaults: a trade must never sit at a guessable address
@@ -110,10 +113,8 @@ async def list_rooms() -> list[dict]:
     rows = await (
         await db.execute(
             """
-            SELECT r.code, r.label_a, r.label_b, r.created_at, r.updated_at,
-                   COUNT(i.id) AS item_count,
-                   COALESCE(SUM(CASE WHEN i.side = 'A' THEN i.qty * i.unit_price ELSE 0 END), 0) AS total_a,
-                   COALESCE(SUM(CASE WHEN i.side = 'B' THEN i.qty * i.unit_price ELSE 0 END), 0) AS total_b
+            SELECT r.id, r.code, r.label_a, r.label_b, r.created_at, r.updated_at,
+                   COUNT(i.id) AS item_count
             FROM rooms r
             LEFT JOIN items i ON i.room_id = r.id
             GROUP BY r.id
@@ -121,7 +122,29 @@ async def list_rooms() -> list[dict]:
             """
         )
     ).fetchall()
-    return [dict(r) for r in rows]
+
+    # Box-based totals: one query for all priced lines, then line_total per line.
+    # Lines with NULL box_price are skipped, matching SQL SUM's NULL handling.
+    lines = await (
+        await db.execute(
+            "SELECT room_id, side, qty, box_price FROM items WHERE box_price IS NOT NULL"
+        )
+    ).fetchall()
+
+    totals: dict[int, dict[str, Decimal]] = {}
+    for line in lines:
+        bucket = totals.setdefault(line["room_id"], {"A": Decimal(0), "B": Decimal(0)})
+        if line["side"] in bucket:
+            bucket[line["side"]] += line_total(int(line["qty"]), Decimal(str(line["box_price"])))
+
+    result = []
+    for r in rows:
+        room = dict(r)
+        bucket = totals.get(room["id"], {"A": Decimal(0), "B": Decimal(0)})
+        room["total_a"] = float(bucket["A"])
+        room["total_b"] = float(bucket["B"])
+        result.append(room)
+    return result
 
 
 async def set_cash(room_id: int, side: str, amount: float) -> None:
