@@ -48,6 +48,25 @@ def rebaseline_condition(current_price: float, old_condition: str, new_condition
     base_price = current_price / old_multiplier if old_multiplier else current_price
     return round(base_price * CONDITION_MULTIPLIERS[new_condition], 2)
 
+SOURCES = ("gw", "third_party", "3d_printed", "handmade")
+
+SOURCE_LABELS = {
+    "gw": "GW",
+    "third_party": "Third Party",
+    "3d_printed": "3D Printed",
+    "handmade": "Handmade",
+}
+
+
+def is_non_gw(source: str) -> bool:
+    """True for any trade-line source other than GW."""
+    return source != "gw"
+
+
+def default_unit_price(catalog_msrp: float, source: str) -> float | None:
+    """Catalog MSRP applies only to GW lines; non-GW lines get no default price."""
+    return catalog_msrp if source == "gw" else None
+
 VENUE_LABELS = {
     "direct": "Direct trade",
     "in_person": "In-person via store",
