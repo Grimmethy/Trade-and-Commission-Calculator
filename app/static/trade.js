@@ -2,7 +2,13 @@
   const roomCode = document.body.dataset.roomCode;
   let currentCode = roomCode; // tracks the room's live code/URL, kept in sync by render() and renameRoomCode()
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  const socket = new WebSocket(`${proto}://${window.location.host}/ws/${roomCode}`);
+  let socket = null;
+  const MAX_RECONNECT_ATTEMPTS = 8;
+  let connState = "connecting";
+  const pendingSends = [];
+  let reconnectAttempts = 0;
+  let reconnectTimer = null;
+  let awaitingFullState = true;
 
   const statusEl = document.getElementById("status");
   const totalAEl = document.getElementById("total-a");
@@ -44,29 +50,63 @@
 
   let latestState = null;
 
-  socket.addEventListener("open", () => {
-    statusEl.textContent = "Connected";
-  });
-  socket.addEventListener("close", () => {
-    statusEl.textContent = "Disconnected — reload the page to reconnect";
-  });
-  socket.addEventListener("error", () => {
-    statusEl.textContent = "Connection error";
-  });
+  function connect() {
+    connState = "connecting";
+    awaitingFullState = true;
+    socket = new WebSocket(`${proto}://${window.location.host}/ws/${roomCode}`);
 
-  socket.addEventListener("message", (event) => {
-    const message = JSON.parse(event.data);
-    if (message.type === "full_state") {
-      latestState = message.payload;
-      render(latestState);
-    } else if (message.type === "error") {
-      statusEl.textContent = "Error: " + message.payload.message;
+    socket.addEventListener("open", () => {
+      connState = "open";
+      statusEl.textContent = "Connected";
+    });
+    socket.addEventListener("close", () => {
+      connState = "closed";
+      clearTimeout(reconnectTimer);
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts += 1;
+        const delay = Math.min(1000 * 2 ** (reconnectAttempts - 1), 10000);
+        statusEl.textContent = "Disconnected — reconnecting…";
+        reconnectTimer = setTimeout(connect, delay);
+      } else {
+        connState = "gave_up";
+        statusEl.textContent = "Disconnected — reload the page to reconnect";
+      }
+    });
+    socket.addEventListener("error", () => {
+      connState = "closed";
+      statusEl.textContent = "Connection error";
+    });
+
+    socket.addEventListener("message", (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === "full_state") {
+        latestState = message.payload;
+        render(latestState);
+        awaitingFullState = false;
+        reconnectAttempts = 0;
+        flushPendingSends();
+      } else if (message.type === "error") {
+        statusEl.textContent = "Error: " + message.payload.message;
+      }
+    });
+  }
+
+  function flushPendingSends() {
+    while (!awaitingFullState && pendingSends.length > 0 && socket.readyState === WebSocket.OPEN) {
+      socket.send(pendingSends.shift());
     }
-  });
+  }
 
   function send(type, payload) {
-    socket.send(JSON.stringify({ type, payload }));
+    const data = JSON.stringify({ type, payload });
+    if (awaitingFullState || !socket || socket.readyState !== WebSocket.OPEN) {
+      pendingSends.push(data);
+      return;
+    }
+    socket.send(data);
   }
+
+  connect();
 
   function money(n) {
     return "$" + Number(n).toFixed(2);
