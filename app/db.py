@@ -144,6 +144,20 @@ CREATE INDEX IF NOT EXISTS idx_inventory_items_catalog_item ON inventory_items(c
 CREATE INDEX IF NOT EXISTS idx_inventory_photos_item ON inventory_photos(inventory_item_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_photos_one_primary
     ON inventory_photos(inventory_item_id) WHERE is_primary = 1;
+
+CREATE TABLE IF NOT EXISTS room_photos (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_code          TEXT NOT NULL,
+    line_id            INTEGER,
+    side               TEXT,
+    filename           TEXT NOT NULL,
+    thumb_filename     TEXT,
+    mime               TEXT,
+    bytes              INTEGER,
+    created_at         TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_room_photos_room ON room_photos(room_code);
 """
 
 _db: aiosqlite.Connection | None = None
