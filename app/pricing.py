@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
 from app.models import Commission, Item, Room
 
@@ -85,6 +86,24 @@ def derive_per_model_price(box_price: float, models_per_box: int) -> float:
     if models_per_box <= 0:
         raise ValueError("models_per_box must be positive")
     return round(box_price / models_per_box, 2)
+
+
+def models_for_line(boxes: int, kit_size: int | None) -> int:
+    if kit_size is None:
+        return boxes
+    return boxes * kit_size
+
+
+def unit_price_per_model(box_price: Decimal, kit_size: int | None) -> Decimal:
+    if kit_size is None:
+        return box_price
+    if kit_size <= 0:
+        raise ValueError("kit_size must be positive")
+    return box_price / kit_size
+
+
+def line_total(boxes: int, box_price: Decimal) -> Decimal:
+    return boxes * box_price
 
 
 def side_total(items: list[Item], side: str) -> float:
