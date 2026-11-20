@@ -1,6 +1,7 @@
 """Private-mode bridge to the inventory plugin (read-only). The calculator never writes inventory data; a finished deal is
 recorded in the inventory plugin's own Trades tab."""
 import json
+import logging
 import os
 import re
 import urllib.error
@@ -10,6 +11,7 @@ import urllib.request
 from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 INVENTORY_URL = os.environ.get("INVENTORY_URL", "http://127.0.0.1:7460").rstrip("/")
 
 
@@ -75,3 +77,6 @@ def status():
         return {"ok": True, "summary": _get("/api/summary")}
     except HTTPException as e:
         return {"ok": False, "error": e.detail}
+    except Exception as exc:
+        logger.exception("inventory status: unexpected error fetching /api/summary")
+        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
