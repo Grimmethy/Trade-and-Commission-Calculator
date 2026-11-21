@@ -1,11 +1,14 @@
 import importlib
 import json
+import logging
 import re
 import sqlite3
 import sys
 from pathlib import Path
 
 import openpyxl
+
+logger = logging.getLogger(__name__)
 
 PRICE_RE = re.compile(r"[\d.]+")
 
@@ -29,6 +32,7 @@ def parse_price(raw) -> float | None:
     try:
         return float(match.group())
     except ValueError:
+        logger.warning("parse_price: could not parse price from raw=%r (matched=%r)", raw, match.group())
         return None
 
 
