@@ -1,5 +1,6 @@
 import re
 import secrets
+import sqlite3
 import string
 
 from app.db import get_db, update_row as _update_row
@@ -32,7 +33,8 @@ async def create_room() -> Room:
                 cash_a=0,
                 cash_b=0,
             )
-        except Exception as exc:
+        except sqlite3.IntegrityError as exc:
+            await db.rollback()
             if "UNIQUE" in str(exc):
                 continue
             raise
