@@ -79,6 +79,8 @@ CREATE TABLE IF NOT EXISTS items (
     sort_order        INTEGER NOT NULL DEFAULT 0,
     verified          INTEGER NOT NULL DEFAULT 0,
     verify_note       TEXT,
+    inventory_code    TEXT,
+    inventory_stock   INTEGER,
     created_at        TEXT NOT NULL DEFAULT (datetime('now')),
     CHECK ((room_id IS NOT NULL) + (commission_id IS NOT NULL) = 1)
 );
@@ -167,6 +169,8 @@ async def _migrate_existing_columns() -> None:
     for anyone with an existing trade.db on disk."""
     migrations = [
         ("items", "condition", "TEXT NOT NULL DEFAULT 'assembled'"),
+        ("items", "inventory_code", "TEXT"),
+        ("items", "inventory_stock", "INTEGER"),
         ("rooms", "trade_venue", "TEXT NOT NULL DEFAULT 'direct'"),
         ("rooms", "in_person_differential", "REAL NOT NULL DEFAULT 0.20"),
         ("rooms", "online_differential", "REAL NOT NULL DEFAULT 0.40"),
@@ -214,6 +218,8 @@ async def _migrate_items_table_for_commissions() -> None:
             sort_order        INTEGER NOT NULL DEFAULT 0,
             verified          INTEGER NOT NULL DEFAULT 0,
             verify_note       TEXT,
+            inventory_code    TEXT,
+            inventory_stock   INTEGER,
             created_at        TEXT NOT NULL DEFAULT (datetime('now')),
             CHECK ((room_id IS NOT NULL) + (commission_id IS NOT NULL) = 1)
         )
@@ -224,10 +230,10 @@ async def _migrate_items_table_for_commissions() -> None:
         INSERT INTO items_new
             (id, room_id, commission_id, side, name, qty, unit_price, source,
              catalog_item_id, box_price, models_per_box, condition, sort_order,
-             verified, verify_note, created_at)
+             verified, verify_note, inventory_code, inventory_stock, created_at)
         SELECT id, room_id, NULL, side, name, qty, unit_price, source,
                catalog_item_id, box_price, models_per_box, condition, sort_order,
-               0, NULL, created_at
+               0, NULL, inventory_code, inventory_stock, created_at
         FROM items
         """
     )
