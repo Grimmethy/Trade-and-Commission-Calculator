@@ -4,8 +4,11 @@ data/pinned-links.json (path overridable with PINNED_LINKS_PATH) is a list of {"
 Only same-site paths are accepted (href must start with a single "/"), at most MAX_LINKS are shown, and a missing or
 broken file means no links. Remove an entry from the file and it disappears at once: that is the 'temporary' part."""
 import json
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 MAX_LINKS = 10
 MAX_LABEL = 80
@@ -18,9 +21,16 @@ def pinned_path() -> Path:
 def load_pinned_links() -> list[dict]:
     try:
         raw = json.loads(pinned_path().read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except FileNotFoundError:
+        return []
+    except OSError as e:
+        logger.warning("pinned links file %s could not be read: %s", pinned_path(), e)
+        return []
+    except ValueError as e:
+        logger.warning("pinned links file %s is corrupt or truncated, showing no links: %s", pinned_path(), e)
         return []
     if not isinstance(raw, list):
+        logger.warning("pinned links file %s must hold a list, got %s; showing no links", pinned_path(), type(raw).__name__)
         return []
     links = []
     for entry in raw:
