@@ -32,6 +32,20 @@ class LoaderTests(unittest.TestCase):
         self.assertEqual(self._load("not json"), [])
         self.assertEqual(self._load({"label": "x", "href": "/y"}), [])
 
+    def test_truncated_file_logs_warning(self):
+        with self.assertLogs("app.pinned", level="WARNING") as cm:
+            self.assertEqual(self._load('[{"label": "x", "href": "/a'), [])
+        self.assertEqual(len(cm.records), 1)
+
+    def test_non_list_file_logs_warning(self):
+        with self.assertLogs("app.pinned", level="WARNING") as cm:
+            self.assertEqual(self._load({}), [])
+        self.assertEqual(len(cm.records), 1)
+
+    def test_missing_file_logs_nothing(self):
+        with self.assertNoLogs("app.pinned", level="WARNING"):
+            self.assertEqual(self._load(None), [])
+
     def test_only_same_site_paths_are_accepted(self):
         bad = ["https://evil.example/x", "//evil.example/x", "javascript:alert(1)", "commissions/x", "/a b", "/a\\b", ""]
         self.assertEqual(self._load([{"label": "x", "href": h} for h in bad]), [])

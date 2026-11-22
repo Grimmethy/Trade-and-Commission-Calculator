@@ -2,7 +2,13 @@
   const roomCode = document.body.dataset.roomCode;
   let currentCode = roomCode; // tracks the room's live code/URL, kept in sync by render() and renameRoomCode()
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  const socket = new WebSocket(`${proto}://${window.location.host}/ws/${roomCode}`);
+  let socket = null;
+  const MAX_RECONNECT_ATTEMPTS = 8;
+  let connState = "connecting";
+  const pendingSends = [];
+  let reconnectAttempts = 0;
+  let reconnectTimer = null;
+  let awaitingFullState = true;
 
   const statusEl = document.getElementById("status");
   const totalAEl = document.getElementById("total-a");
@@ -35,6 +41,37 @@
   const commissionFlatLabel = document.getElementById("commission-flat-label");
   const commissionAmountDisplay = document.getElementById("commission-amount-display");
 
+  const disconnectBanner = document.createElement("div");
+  disconnectBanner.id = "disconnect-banner";
+  disconnectBanner.setAttribute("role", "alert");
+  disconnectBanner.hidden = true;
+  document.body.prepend(disconnectBanner);
+
+  // Single place that turns connState into UI: the banner plus the input lockout.
+  // While not open, send() queues instead of sending, and render() only runs on a
+  // server full_state, so totals stay at the last server-confirmed values.
+  function renderConnState() {
+    const offline = connState !== "open";
+    disconnectBanner.hidden = !offline;
+    disconnectBanner.textContent =
+      connState === "gave_up"
+        ? "Connection lost. Edits are not saved. Reload the page to continue."
+        : "Edits are not saved — the page is reconnecting…";
+    const lockable = [
+      cashAEl, cashBEl, venueSelect, inPersonDifferentialInput, onlineDifferentialInput,
+      commissionSideSelect, commissionTypeSelect, commissionRateInput, commissionBaseInput,
+      commissionFlatInput,
+    ];
+    for (const el of lockable) el.disabled = offline;
+    const rowControls = document.querySelectorAll(
+      ".item-row input, .item-row select, .remove-btn, .add-item-form input, .add-item-form select, .add-item-form button"
+    );
+    for (const el of rowControls) el.disabled = offline;
+    for (const el of [labelAEl, labelBEl, roomCodeEl]) {
+      el.contentEditable = offline ? "false" : "true";
+    }
+  }
+
   const CONDITION_LABELS = {
     needs_repair: "Needs Repair",
     assembled: "Assembled",
@@ -44,29 +81,68 @@
 
   let latestState = null;
 
-  socket.addEventListener("open", () => {
-    statusEl.textContent = "Connected";
-  });
-  socket.addEventListener("close", () => {
-    statusEl.textContent = "Disconnected — reload the page to reconnect";
-  });
-  socket.addEventListener("error", () => {
-    statusEl.textContent = "Connection error";
-  });
+  function connect() {
+    connState = "connecting";
+    renderConnState();
+    awaitingFullState = true;
+    socket = new WebSocket(`${proto}://${window.location.host}/ws/${roomCode}`);
 
-  socket.addEventListener("message", (event) => {
-    const message = JSON.parse(event.data);
-    if (message.type === "full_state") {
-      latestState = message.payload;
-      render(latestState);
-    } else if (message.type === "error") {
-      statusEl.textContent = "Error: " + message.payload.message;
+    socket.addEventListener("open", () => {
+      connState = "open";
+      renderConnState();
+      statusEl.textContent = "Connected";
+    });
+    socket.addEventListener("close", () => {
+      connState = "closed";
+      renderConnState();
+      clearTimeout(reconnectTimer);
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts += 1;
+        const delay = Math.min(1000 * 2 ** (reconnectAttempts - 1), 10000);
+        statusEl.textContent = "Disconnected — reconnecting…";
+        reconnectTimer = setTimeout(connect, delay);
+      } else {
+        connState = "gave_up";
+        renderConnState();
+        statusEl.textContent = "Disconnected — reload the page to reconnect";
+      }
+    });
+    socket.addEventListener("error", () => {
+      connState = "closed";
+      renderConnState();
+      statusEl.textContent = "Connection error";
+    });
+
+    socket.addEventListener("message", (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === "full_state") {
+        latestState = message.payload;
+        render(latestState);
+        awaitingFullState = false;
+        reconnectAttempts = 0;
+        flushPendingSends();
+      } else if (message.type === "error") {
+        statusEl.textContent = "Error: " + message.payload.message;
+      }
+    });
+  }
+
+  function flushPendingSends() {
+    while (!awaitingFullState && pendingSends.length > 0 && socket.readyState === WebSocket.OPEN) {
+      socket.send(pendingSends.shift());
     }
-  });
+  }
 
   function send(type, payload) {
-    socket.send(JSON.stringify({ type, payload }));
+    const data = JSON.stringify({ type, payload });
+    if (awaitingFullState || !socket || socket.readyState !== WebSocket.OPEN) {
+      pendingSends.push(data);
+      return;
+    }
+    socket.send(data);
   }
+
+  connect();
 
   function money(n) {
     return "$" + Number(n).toFixed(2);
@@ -463,6 +539,7 @@
 
     _wireKitModelsSave() {
       this.kitModelsSave.addEventListener("click", async () => {
+        if (connState !== "open") return;
         const models = Number(this.kitModelsInput.value);
         if (!this.selectedUnit || !models || models <= 0) return;
 
@@ -558,6 +635,10 @@
   });
   roomCodeEl.addEventListener("blur", async () => {
     const newName = roomCodeEl.textContent.trim();
+    if (connState !== "open") {
+      roomCodeEl.textContent = currentCode;
+      return;
+    }
     if (!newName || newName === currentCode) {
       roomCodeEl.textContent = currentCode;
       return;
