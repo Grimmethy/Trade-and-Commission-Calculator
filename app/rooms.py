@@ -81,6 +81,8 @@ async def _load_items(room_id: int) -> list[Item]:
             box_price=r["box_price"],
             models_per_box=r["models_per_box"],
             condition=r["condition"],
+            inventory_code=r["inventory_code"],
+            inventory_stock=r["inventory_stock"],
         )
         for r in item_rows
     ]
@@ -211,18 +213,51 @@ async def add_item(
     box_price: float | None = None,
     models_per_box: int | None = None,
     condition: str = "assembled",
+    inventory_code: str | None = None,
+    inventory_stock: int | None = None,
 ) -> int:
     db = get_db()
     cursor = await db.execute(
         """
         INSERT INTO items
-            (room_id, side, name, qty, unit_price, source, catalog_item_id, box_price, models_per_box, condition)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (room_id, side, name, qty, unit_price, source, catalog_item_id, box_price, models_per_box, condition,
+             inventory_code, inventory_stock)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (room_id, side, name, qty, unit_price, source, catalog_item_id, box_price, models_per_box, condition),
+        (room_id, side, name, qty, unit_price, source, catalog_item_id, box_price, models_per_box, condition,
+         inventory_code, inventory_stock),
     )
     await _update_row("rooms", room_id, {}, touch_updated_at=True)  # also commits the INSERT above
     return cursor.lastrowid
+
+
+async def find_item_by_inventory_code(
+    room_id: int, side: str, code: str | None
+) -> tuple[int, int] | None:
+    """Return (row_id, qty) of the first item on this side with the inventory code, or None."""
+    if not code:
+        return None
+    db = get_db()
+    row = await (
+        await db.execute(
+            "SELECT id, qty FROM items WHERE room_id = ? AND side = ? AND inventory_code = ? "
+            "ORDER BY sort_order, id LIMIT 1",
+            (room_id, side, code),
+        )
+    ).fetchone()
+    if row is None:
+        return None
+    return (row["id"], row["qty"])
+
+
+async def add_qty(room_id: int, item_id: int, delta: int) -> None:
+    """Atomically increase an item's qty by delta and persist it."""
+    db = get_db()
+    await db.execute(
+        "UPDATE items SET qty = qty + ? WHERE id = ? AND room_id = ?",
+        (delta, item_id, room_id),
+    )
+    await _update_row("rooms", room_id, {}, touch_updated_at=True)  # also commits the UPDATE above
 
 
 async def get_item(item_id: int) -> dict | None:
