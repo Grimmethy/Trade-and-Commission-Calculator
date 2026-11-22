@@ -15,6 +15,8 @@ class Item:
     condition: str = "assembled"
     verified: bool = False
     verify_note: str | None = None
+    inventory_code: str | None = None
+    inventory_stock: int | None = None
 
     @property
     def line_total(self) -> float:
@@ -35,6 +37,8 @@ class Item:
             "condition": self.condition,
             "verified": self.verified,
             "verify_note": self.verify_note,
+            "inventory_code": self.inventory_code,
+            "inventory_stock": self.inventory_stock,
         }
 
 

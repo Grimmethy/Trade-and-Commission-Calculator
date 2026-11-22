@@ -184,10 +184,34 @@ async def _handle_add_item(room, payload: dict) -> None:
     if qty <= 0:
         raise ValueError("qty must be positive")
 
+    inventory_code = payload.get("inventory_code")
+    if inventory_code is not None:
+        if not isinstance(inventory_code, str):
+            raise ValueError("inventory_code must be a string")
+        inventory_code = inventory_code.strip()
+        if not inventory_code:
+            raise ValueError("inventory_code must not be empty")
+        if len(inventory_code) > 64:
+            raise ValueError("inventory_code must be at most 64 characters")
+    inventory_stock = payload.get("inventory_stock")
+    if inventory_stock is not None:
+        if isinstance(inventory_stock, bool) or not isinstance(inventory_stock, int):
+            raise ValueError("inventory_stock must be an integer")
+        if inventory_stock < 0:
+            raise ValueError("inventory_stock must be non-negative")
+
+    if inventory_code is not None:
+        existing = await rooms_service.find_item_by_inventory_code(room.id, side, inventory_code)
+        if existing:
+            await rooms_service.add_qty(room.id, existing[0], qty)
+            return
+        # Inventory-sourced lines are always stored as manual items.
+        source = "manual"
+
     box_price = None
     models_per_box = None
 
-    if source == "catalog" and catalog_item_id is not None:
+    if source == "catalog" and catalog_item_id is not None and inventory_code is None:
         catalog_item = await catalog_service.get_catalog_item(int(catalog_item_id))
         if catalog_item is None:
             raise ValueError("Catalog item not found")
@@ -219,9 +243,11 @@ async def _handle_add_item(room, payload: dict) -> None:
         box_price=box_price,
         models_per_box=models_per_box,
         condition=condition,
+        inventory_code=inventory_code,
+        inventory_stock=inventory_stock,
     )
 
-    if source == "manual":
+    if source == "manual" and inventory_code is None:
         await _log_coverage_gap(room.code, payload.get("faction_hint"), name, unit_price)
 
 
